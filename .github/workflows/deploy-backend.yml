@@ -211,7 +211,7 @@ jobs:
               "export HOME=/root",
               "export COMPOSER_HOME=/root/.composer",
               "REPO_PATH=/tmp/himelog-repo",
-              "DEPLOY_PATH=/mf",
+              "DEPLOY_PATH=/mf/himelog-api",
               "GITHUB_REPO=https://github.com/tadasuke/himelog.git",
               "BRANCH=develop",
               "echo '=== Starting deployment ==='",
