@@ -47,17 +47,17 @@ jobs:
           DEPLOY_PATH="/mf"
           REPO_PATH="/tmp/himelog-repo"
           
-          # JSONパラメータファイルを作成
-          cat > /tmp/ssm-params.json << EOF
+          # JSONパラメータファイルを作成（変数展開を避けるため'EOF'を使用）
+          cat > /tmp/ssm-params.json << 'EOF'
           {
             "commands": [
-              "cd $REPO_PATH || (mkdir -p $REPO_PATH && cd $REPO_PATH && git clone git@github.com:tadasuke/himelog.git .)",
-              "cd $REPO_PATH",
+              "cd /tmp/himelog-repo || (mkdir -p /tmp/himelog-repo && cd /tmp/himelog-repo && git clone git@github.com:tadasuke/himelog.git .)",
+              "cd /tmp/himelog-repo",
               "git fetch origin",
               "git checkout develop",
               "git pull origin develop",
-              "rsync -av --delete $REPO_PATH/backend/ $DEPLOY_PATH/ --exclude=.git",
-              "cd $DEPLOY_PATH",
+              "rsync -av --delete /tmp/himelog-repo/backend/ /mf/ --exclude=.git",
+              "cd /mf",
               "composer install --no-dev --optimize-autoloader",
               "php artisan config:clear",
               "php artisan cache:clear",
@@ -72,66 +72,107 @@ jobs:
           EOF
           
           echo "Sending SSM command to instance: $INSTANCE_ID"
+          echo "Parameters file contents:"
+          cat /tmp/ssm-params.json
           
-          # SSMコマンドを実行
-          COMMAND_ID=$(aws ssm send-command \
+          # SSMコマンドを実行（stderrとstdoutを分離）
+          set +e
+          COMMAND_OUTPUT=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
             --parameters file:///tmp/ssm-params.json \
             --cloud-watch-output-config 'CloudWatchOutputEnabled=true' \
             --query 'Command.CommandId' \
             --output text 2>&1)
-          
           EXIT_CODE=$?
+          set -e
           
           if [ $EXIT_CODE -ne 0 ]; then
             echo "Error sending SSM command (exit code: $EXIT_CODE):"
-            echo "$COMMAND_ID"
-            exit 1
-          fi
-          
-          if [ -z "$COMMAND_ID" ] || [ "$COMMAND_ID" = "None" ]; then
-            echo "Error: Command ID is empty or None"
-            echo "Response was: $COMMAND_ID"
-            # デバッグ用にフルレスポンスを取得
+            echo "$COMMAND_OUTPUT"
+            echo "Full error details:"
             aws ssm send-command \
               --instance-ids "$INSTANCE_ID" \
               --document-name "AWS-RunShellScript" \
               --parameters file:///tmp/ssm-params.json \
               --cloud-watch-output-config 'CloudWatchOutputEnabled=true' \
-              --output json
+              --output json || true
             exit 1
           fi
           
+          COMMAND_ID=$(echo "$COMMAND_OUTPUT" | tr -d '\n\r' | grep -o '^[a-f0-9-]*$' || echo "")
+          
+          if [ -z "$COMMAND_ID" ] || [ "$COMMAND_ID" = "None" ]; then
+            echo "Error: Command ID is empty or None"
+            echo "Raw output was: $COMMAND_OUTPUT"
+            # デバッグ用にフルレスポンスを取得
+            echo "Full response:"
+            aws ssm send-command \
+              --instance-ids "$INSTANCE_ID" \
+              --document-name "AWS-RunShellScript" \
+              --parameters file:///tmp/ssm-params.json \
+              --cloud-watch-output-config 'CloudWatchOutputEnabled=true' \
+              --output json || true
+            exit 1
+          fi
+          
+          # 環境変数と出力の両方に設定（両方の方法で確実に受け渡し）
           echo "command_id=$COMMAND_ID" >> $GITHUB_ENV
           echo "Command sent successfully: $COMMAND_ID"
+          echo "command_id=$COMMAND_ID" >> $GITHUB_OUTPUT
 
       - name: Wait for command completion
         run: |
-          set -e
           INSTANCE_ID="i-0c78bb1a7c6be7fa9"
+          # 環境変数から取得（steps.outputsとenvの両方から試す）
           COMMAND_ID="${{ env.command_id }}"
+          
+          # 環境変数が空の場合はsteps.outputsから取得を試みる
+          if [ -z "$COMMAND_ID" ]; then
+            COMMAND_ID="${{ steps.deploy.outputs.command_id }}"
+          fi
           
           if [ -z "$COMMAND_ID" ]; then
             echo "Error: COMMAND_ID is not set"
+            echo "Tried env.command_id: ${{ env.command_id }}"
+            echo "Tried steps.deploy.outputs.command_id: ${{ steps.deploy.outputs.command_id }}"
+            echo "Available environment variables:"
+            env | grep -i command || true
             exit 1
           fi
           
           echo "Waiting for command to complete: $COMMAND_ID"
+          echo "Instance ID: $INSTANCE_ID"
           MAX_WAIT_TIME=600  # 10分
           ELAPSED_TIME=0
           
           while true; do
-            STATUS=$(aws ssm get-command-invocation \
+            # ステータスを取得（エラーハンドリングを改善）
+            set +e
+            STATUS_OUTPUT=$(aws ssm get-command-invocation \
               --command-id "$COMMAND_ID" \
               --instance-id "$INSTANCE_ID" \
               --query 'Status' \
-              --output text 2>&1) || {
-              echo "Error getting command status:"
-              echo "$STATUS"
-              exit 1
-            }
+              --output text 2>&1)
+            STATUS_EXIT_CODE=$?
+            set -e
             
+            if [ $STATUS_EXIT_CODE -ne 0 ]; then
+              echo "Error getting command status (exit code: $STATUS_EXIT_CODE):"
+              echo "$STATUS_OUTPUT"
+              echo "Waiting 5 seconds before retry..."
+              sleep 5
+              ELAPSED_TIME=$((ELAPSED_TIME + 5))
+              
+              # タイムアウトチェック
+              if [ $ELAPSED_TIME -ge $MAX_WAIT_TIME ]; then
+                echo "Error: Timed out waiting for command status"
+                exit 1
+              fi
+              continue
+            fi
+            
+            STATUS=$(echo "$STATUS_OUTPUT" | tr -d '\n\r')
             echo "Command status: $STATUS (elapsed: ${ELAPSED_TIME}s)"
             
             if [ "$STATUS" = "Success" ]; then
@@ -139,18 +180,22 @@ jobs:
               break
             elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ] || [ "$STATUS" = "TimedOut" ]; then
               echo "Command failed with status: $STATUS"
+              echo "Fetching command output..."
               # エラー出力も表示
+              set +e
               aws ssm get-command-invocation \
                 --command-id "$COMMAND_ID" \
                 --instance-id "$INSTANCE_ID" \
                 --query '[StandardOutputContent, StandardErrorContent]' \
-                --output text
+                --output text 2>&1 || true
+              set -e
               exit 1
             fi
             
             # タイムアウトチェック
             if [ $ELAPSED_TIME -ge $MAX_WAIT_TIME ]; then
               echo "Error: Command timed out after ${MAX_WAIT_TIME}s"
+              echo "Last status: $STATUS"
               exit 1
             fi
             
@@ -159,14 +204,34 @@ jobs:
           done
 
       - name: Show command output
+        continue-on-error: true
         run: |
           INSTANCE_ID="i-0c78bb1a7c6be7fa9"
+          # 環境変数から取得（steps.outputsとenvの両方から試す）
           COMMAND_ID="${{ env.command_id }}"
           
+          # 環境変数が空の場合はsteps.outputsから取得を試みる
+          if [ -z "$COMMAND_ID" ]; then
+            COMMAND_ID="${{ steps.deploy.outputs.command_id }}"
+          fi
+          
+          if [ -z "$COMMAND_ID" ]; then
+            echo "Warning: COMMAND_ID is not set, skipping output display"
+            exit 0
+          fi
+          
           echo "=== Command Output ==="
+          set +e
           aws ssm get-command-invocation \
             --command-id "$COMMAND_ID" \
             --instance-id "$INSTANCE_ID" \
             --query '[StandardOutputContent, StandardErrorContent]' \
-            --output text
+            --output text 2>&1
+          EXIT_CODE=$?
+          set -e
+          
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "Warning: Failed to get command output (exit code: $EXIT_CODE)"
+            echo "This is not a fatal error, command may have completed successfully"
+          fi
 
