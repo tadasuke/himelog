@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import './Home.css'
 import RecordForm from './RecordForm'
 import StarRating from './StarRating'
+import { getApiUrl } from '../utils/api'
 
 function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded }) {
   const [records, setRecords] = useState([])
@@ -19,7 +20,7 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded }) {
     setError(null)
 
     try {
-      const response = await fetch(`/api/records?user_id=${user.id}`)
+      const response = await fetch(getApiUrl(`/api/records?user_id=${user.id}`))
       const data = await response.json()
 
       if (!response.ok) {
@@ -82,7 +83,7 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded }) {
     setError(null)
 
     try {
-      const response = await fetch(`/api/records/${deleteConfirmRecord.id}`, {
+      const response = await fetch(getApiUrl(`/api/records/${deleteConfirmRecord.id}`), {
         method: 'DELETE',
       })
 

@@ -3,6 +3,7 @@ import Login from './components/Login'
 import Home from './components/Home'
 import MyPage from './components/MyPage'
 import BottomNavigation from './components/BottomNavigation'
+import { getApiUrl } from './utils/api'
 import './App.css'
 
 function App() {
@@ -47,7 +48,7 @@ function App() {
   const handleGoogleLogin = async (credential) => {
     try {
       console.log('Sending token to backend...', { tokenLength: credential?.length })
-      const response = await fetch('/api/auth/google/login', {
+      const response = await fetch(getApiUrl('/api/auth/google/login'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -101,7 +102,7 @@ function App() {
     try {
       // バックエンドにログアウトリクエストを送信（オプション）
       try {
-        await fetch('/api/auth/logout', {
+        await fetch(getApiUrl('/api/auth/logout'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

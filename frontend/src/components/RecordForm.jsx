@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import StarRating from './StarRating'
+import { getApiUrl } from '../utils/api'
 import './RecordForm.css'
 
 function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
@@ -51,8 +52,8 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
     const fetchShopTypes = async () => {
       try {
         const url = userId 
-          ? `/api/shop-types?user_id=${encodeURIComponent(userId)}`
-          : '/api/shop-types'
+          ? getApiUrl(`/api/shop-types?user_id=${encodeURIComponent(userId)}`)
+          : getApiUrl('/api/shop-types')
         const response = await fetch(url)
         const data = await response.json()
 
@@ -186,7 +187,7 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
 
     setIsLoadingShopNames(true)
     try {
-      const response = await fetch(`/api/records/shop-names?user_id=${userId}&shop_type=${encodeURIComponent(shopType)}`)
+      const response = await fetch(getApiUrl(`/api/records/shop-names?user_id=${userId}&shop_type=${encodeURIComponent(shopType)}`))
       const data = await response.json()
 
       if (response.ok && data.success) {
@@ -230,7 +231,7 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
 
     setIsLoadingGirlNames(true)
     try {
-      const response = await fetch(`/api/records/girl-names?user_id=${userId}&shop_type=${encodeURIComponent(shopType)}&shop_name=${encodeURIComponent(shopName)}`)
+      const response = await fetch(getApiUrl(`/api/records/girl-names?user_id=${userId}&shop_type=${encodeURIComponent(shopType)}&shop_name=${encodeURIComponent(shopName)}`))
       const data = await response.json()
 
       if (response.ok && data.success) {
@@ -290,8 +291,8 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
 
     try {
       const url = editingRecord 
-        ? `/api/records/${editingRecord.id}`
-        : '/api/records'
+        ? getApiUrl(`/api/records/${editingRecord.id}`)
+        : getApiUrl('/api/records')
       const method = editingRecord ? 'PUT' : 'POST'
       
       const requestBody = editingRecord
