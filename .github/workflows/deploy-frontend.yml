@@ -6,10 +6,11 @@ on:
       - develop
     paths:
       - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
   workflow_dispatch:
     inputs:
       branch:
-        description: 'デプロイするブランチ'
+        description: 'develop'
         required: true
         default: 'develop'
         type: choice
