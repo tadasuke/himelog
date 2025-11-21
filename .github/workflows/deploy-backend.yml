@@ -83,38 +83,118 @@ jobs:
             exit 1
           fi
           
-          # SSMエージェントの状態を確認
+          # IAMロールの確認
+          echo ""
+          echo "Checking IAM role configuration..."
+          if [ -z "$IAM_PROFILE" ] || [ "$IAM_PROFILE" = "None" ]; then
+            echo "❌ Error: No IAM instance profile attached to the instance"
+            echo "SSM requires an IAM role with AmazonSSMManagedInstanceCore policy"
+            echo ""
+            echo "To fix this:"
+            echo "1. Create an IAM role with AmazonSSMManagedInstanceCore managed policy"
+            echo "2. Attach the IAM role to the EC2 instance:"
+            echo "   aws ec2 associate-iam-instance-profile \\"
+            echo "     --instance-id $INSTANCE_ID \\"
+            echo "     --iam-instance-profile Name=your-instance-profile-name"
+            exit 1
+          fi
+          
+          # IAMロール名を抽出
+          IAM_ROLE_NAME=$(echo "$IAM_PROFILE" | awk -F'/' '{print $NF}')
+          echo "IAM Role Name: $IAM_ROLE_NAME"
+          
+          # IAMロールのポリシーを確認（可能な場合）
+          set +e
+          IAM_POLICIES=$(aws iam list-attached-role-policies --role-name "$IAM_ROLE_NAME" --query 'AttachedPolicies[?PolicyArn==`arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore`]' --output text 2>&1)
+          set -e
+          
+          if echo "$IAM_POLICIES" | grep -q "AmazonSSMManagedInstanceCore"; then
+            echo "✅ AmazonSSMManagedInstanceCore policy is attached"
+          else
+            echo "⚠️  Warning: AmazonSSMManagedInstanceCore policy may not be attached"
+            echo "Please verify the IAM role has this managed policy attached"
+            echo "You can check with:"
+            echo "  aws iam list-attached-role-policies --role-name $IAM_ROLE_NAME"
+          fi
+          
+          # SSMエージェントの状態を確認（必須チェック）
           echo ""
           echo "Checking SSM agent status..."
+          set +e
           SSM_STATUS=$(aws ssm describe-instance-information \
             --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
-            --query 'InstanceInformationList[0].[PingStatus, LastPingDateTime]' \
-            --output text 2>&1) || {
-            echo "Warning: Could not check SSM agent status"
-            echo "This might mean SSM agent is not installed or configured"
-            echo "Output: $SSM_STATUS"
-          }
+            --query 'InstanceInformationList[0].[PingStatus, LastPingDateTime, AgentVersion]' \
+            --output text 2>&1)
+          SSM_STATUS_EXIT_CODE=$?
+          set -e
           
-          if [ -n "$SSM_STATUS" ] && [ "$SSM_STATUS" != "None" ]; then
-            SSM_PING_STATUS=$(echo "$SSM_STATUS" | awk '{print $1}')
-            SSM_LAST_PING=$(echo "$SSM_STATUS" | awk '{print $2}')
-            echo "SSM Ping Status: $SSM_PING_STATUS"
-            echo "Last Ping: $SSM_LAST_PING"
-            
-            if [ "$SSM_PING_STATUS" != "Online" ]; then
-              echo "Warning: SSM agent is not online (status: $SSM_PING_STATUS)"
-              echo "SSM commands may fail. Please ensure:"
-              echo "1. SSM agent is installed on the instance"
-              echo "2. Instance has an IAM role with SSM permissions attached"
-              echo "3. SSM agent service is running on the instance"
-            fi
-          else
-            echo "Warning: SSM instance information not found"
-            echo "Please ensure:"
-            echo "1. SSM agent is installed and running on the instance"
-            echo "2. Instance has an IAM role with AmazonSSMManagedInstanceCore policy"
-            echo "3. VPC endpoints are configured for Systems Manager (if instance is in VPC)"
+          if [ $SSM_STATUS_EXIT_CODE -ne 0 ]; then
+            echo "❌ Error: Could not check SSM agent status"
+            echo "Output: $SSM_STATUS"
+            echo ""
+            echo "This error usually means:"
+            echo "1. SSM agent is not installed on the instance"
+            echo "2. Instance is not registered with SSM"
+            echo "3. IAM role does not have ssm:DescribeInstanceInformation permission"
+            echo ""
+            echo "To fix this:"
+            echo "1. Install SSM agent on the instance"
+            echo "2. Attach an IAM role with AmazonSSMManagedInstanceCore policy to the instance"
+            echo "3. Ensure SSM agent service is running: sudo systemctl start amazon-ssm-agent"
+            echo "4. Wait a few minutes for the instance to register with SSM"
+            exit 1
           fi
+          
+          if [ -z "$SSM_STATUS" ] || [ "$SSM_STATUS" = "None" ] || [ "$SSM_STATUS" = "None None None" ]; then
+            echo "❌ Error: SSM instance information not found"
+            echo "The instance is not registered with AWS Systems Manager"
+            echo ""
+            echo "Based on the SSM agent logs you shared, the agent is running but cannot connect to Systems Manager"
+            echo "This typically indicates:"
+            echo ""
+            echo "1. ❌ IAM Role Issue (Most Common):"
+            echo "   - IAM role may not have AmazonSSMManagedInstanceCore policy"
+            echo "   - Or IAM role is not attached to the instance"
+            echo "   Check with: aws iam list-attached-role-policies --role-name $IAM_ROLE_NAME"
+            echo ""
+            echo "2. ❌ VPC Endpoints Not Configured:"
+            echo "   - If instance is in VPC without internet gateway, VPC endpoints are required"
+            echo "   - Required endpoints: ssm, ssmmessages, ec2messages"
+            echo "   Check with: aws ec2 describe-vpc-endpoints"
+            echo ""
+            echo "3. ⚠️  Security Group Rules:"
+            echo "   - Security group must allow outbound HTTPS (443) traffic"
+            echo ""
+            echo "To diagnose on the instance, check SSM agent logs:"
+            echo "  sudo tail -f /var/log/amazon/ssm/amazon-ssm-agent.log"
+            echo ""
+            echo "Common error in logs: 'status code: 400' means IAM permission issue"
+            echo "Fix by ensuring IAM role has AmazonSSMManagedInstanceCore policy attached"
+            exit 1
+          fi
+          
+          SSM_PING_STATUS=$(echo "$SSM_STATUS" | awk '{print $1}')
+          SSM_LAST_PING=$(echo "$SSM_STATUS" | awk '{print $2}')
+          SSM_AGENT_VERSION=$(echo "$SSM_STATUS" | awk '{print $3}')
+          
+          echo "✅ SSM Agent Version: $SSM_AGENT_VERSION"
+          echo "✅ SSM Ping Status: $SSM_PING_STATUS"
+          echo "✅ Last Ping: $SSM_LAST_PING"
+          
+          if [ "$SSM_PING_STATUS" != "Online" ]; then
+            echo "❌ Error: SSM agent is not online (status: $SSM_PING_STATUS)"
+            echo "SSM commands cannot be sent to instances that are not online"
+            echo ""
+            echo "Please ensure:"
+            echo "1. SSM agent service is running on the instance: sudo systemctl status amazon-ssm-agent"
+            echo "2. Instance has an IAM role with AmazonSSMManagedInstanceCore policy attached"
+            echo "3. Network connectivity is available (check security groups and VPC endpoints)"
+            echo "4. Wait a few minutes after starting the agent for it to register"
+            exit 1
+          fi
+          
+          echo ""
+          echo "✅ All checks passed. Instance is ready for SSM commands."
 
       - name: Deploy via SSM - Git pull and deploy backend only
         id: deploy
@@ -128,22 +208,52 @@ jobs:
           cat > /tmp/ssm-params.json << 'EOF'
           {
             "commands": [
-              "cd /tmp/himelog-repo || (mkdir -p /tmp/himelog-repo && cd /tmp/himelog-repo && git clone git@github.com:tadasuke/himelog.git .)",
-              "cd /tmp/himelog-repo",
-              "git fetch origin",
-              "git checkout develop",
-              "git pull origin develop",
-              "rsync -av --delete /tmp/himelog-repo/backend/ /mf/ --exclude=.git",
-              "cd /mf",
-              "composer install --no-dev --optimize-autoloader",
-              "php artisan config:clear",
-              "php artisan cache:clear",
-              "php artisan route:clear",
-              "php artisan view:clear",
-              "php artisan migrate --force",
-              "php artisan config:cache",
-              "php artisan route:cache",
-              "php artisan view:cache"
+              "set -e",
+              "export HOME=/root",
+              "export COMPOSER_HOME=/root/.composer",
+              "REPO_PATH=/tmp/himelog-repo",
+              "DEPLOY_PATH=/mf",
+              "GITHUB_REPO=https://github.com/tadasuke/himelog.git",
+              "BRANCH=develop",
+              "echo '=== Starting deployment ==='",
+              "echo 'Step 1: Preparing directories'",
+              "mkdir -p $REPO_PATH || true",
+              "cd $REPO_PATH || exit 1",
+              "echo 'Step 2: Cloning or updating repository'",
+              "if [ -d .git ]; then",
+              "  echo 'Repository exists, fetching updates...'",
+              "  git fetch origin || exit 1",
+              "  git checkout $BRANCH || exit 1",
+              "  git reset --hard origin/$BRANCH || exit 1",
+              "  git pull origin $BRANCH || exit 1",
+              "else",
+              "  echo 'Repository not found, cloning...'",
+              "  rm -rf $REPO_PATH/* $REPO_PATH/.* 2>/dev/null || true",
+              "  git clone -b $BRANCH $GITHUB_REPO . || exit 1",
+              "fi",
+              "echo 'Step 3: Verifying repository structure'",
+              "if [ ! -d backend ]; then",
+              "  echo 'Error: backend directory not found in repository'",
+              "  exit 1",
+              "fi",
+              "echo 'Step 4: Syncing files to deployment path'",
+              "mkdir -p $DEPLOY_PATH || exit 1",
+              "rsync -av --delete --exclude=.git --exclude=node_modules --exclude=vendor $REPO_PATH/backend/ $DEPLOY_PATH/ || exit 1",
+              "echo 'Step 5: Installing composer dependencies'",
+              "cd $DEPLOY_PATH || exit 1",
+              "composer install --no-dev --optimize-autoloader --no-interaction || exit 1",
+              "echo 'Step 6: Clearing Laravel caches'",
+              "php artisan config:clear || exit 1",
+              "php artisan cache:clear || exit 1",
+              "php artisan route:clear || exit 1",
+              "php artisan view:clear || exit 1",
+              "echo 'Step 7: Running migrations'",
+              "php artisan migrate --force || exit 1",
+              "echo 'Step 8: Optimizing Laravel'",
+              "php artisan config:cache || exit 1",
+              "php artisan route:cache || exit 1",
+              "php artisan view:cache || exit 1",
+              "echo '=== Deployment completed successfully ==='"
             ]
           }
           EOF
