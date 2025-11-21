@@ -25,14 +25,14 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        // すべての例外をログに記録
+        // APIリクエストは常にJSONを返す
         $exceptions->shouldRenderJsonWhen(function ($request, \Throwable $e) {
-            return true; // APIリクエストは常にJSONを返す
+            return $request->is('api/*') || $request->expectsJson();
         });
         
-        // 例外をログに記録（詳細な情報を含む）
-        $exceptions->report(function (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Unhandled exception: ' . $e->getMessage(), [
+        // すべての例外をログに記録（詳細な情報を含む）
+        $exceptions->reportable(function (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Unhandled exception', [
                 'exception' => get_class($e),
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -42,6 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 'previous' => $e->getPrevious() ? [
                     'class' => get_class($e->getPrevious()),
                     'message' => $e->getPrevious()->getMessage(),
+                    'trace' => $e->getPrevious()->getTraceAsString(),
                 ] : null,
             ]);
         });

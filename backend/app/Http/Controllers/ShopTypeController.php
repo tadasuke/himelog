@@ -79,7 +79,14 @@ class ShopTypeController extends Controller
                 'shop_types' => $sortedShopTypes
             ]);
         } catch (\Exception $e) {
-            Log::error('Shop type fetch error: ' . $e->getMessage());
+            Log::error('Shop type fetch error', [
+                'message' => $e->getMessage(),
+                'exception' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $userId ?? null,
+            ]);
             return response()->json([
                 'error' => 'Failed to fetch shop types',
                 'message' => $e->getMessage()
