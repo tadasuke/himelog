@@ -152,45 +152,106 @@ php artisan serve
 
 ### 3. 環境変数の設定
 
-#### バックエンド（`backend/.env`）
+バックエンドの `.env` ファイルに以下を追加：
 
 ```env
-GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 GOOGLE_REDIRECT_URI=http://localhost:8000/api/auth/google/callback
 ```
 
-#### フロントエンド（`frontend/.env`）
+## サーバー側の初回セットアップ（EC2）
 
-```env
-VITE_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+EC2サーバーで初回のみ実行する必要があるコマンドです。
+
+### 前提条件
+
+- EC2インスタンスにSSHまたはSSMでアクセスできること
+- デプロイパス: `/mf/himelog-api`
+
+### 接続方法
+
+#### 方法1: SSHで接続（推奨）
+
+**SSH鍵を使用した接続：**
+
+```bash
+# SSH鍵のパスとEC2インスタンスのパブリックIPまたはDNS名を指定
+ssh -i /path/to/your-key.pem ec2-user@<EC2_PUBLIC_IP_OR_DNS>
+
+# 例: パブリックIPが 54.250.xxx.xxx の場合
+ssh -i ~/.ssh/himelog-key.pem ec2-user@54.250.xxx.xxx
+
+# 例: パブリックDNS名を使用する場合
+ssh -i ~/.ssh/himelog-key.pem ec2-user@ec2-54-250-xxx-xxx.ap-northeast-1.compute.amazonaws.com
 ```
 
-**注意**: フロントエンドとバックエンドで同じクライアントIDを使用するか、別々のクライアントIDを作成してください。
+**注意事項：**
+- Amazon Linux 2023の場合、デフォルトユーザーは `ec2-user` です
+- SSH鍵のパーミッションは `600` に設定してください：`chmod 600 /path/to/your-key.pem`
+- セキュリティグループでSSH（ポート22）が許可されていることを確認してください
 
-## 機能
+**EC2 Instance Connectを使用する場合：**
 
-- ログイン画面（Google 認証）
-- Google OAuth 認証 API (`/api/auth/google/login`)
-- ログイン後のホーム画面（ユーザーID・名前・メールアドレス表示）
-- ログ一覧表示
-- ログイン履歴の自動保存（MySQL）
+1. AWSコンソールでEC2インスタンスを選択
+2. 「接続」ボタンをクリック
+3. 「EC2 Instance Connect」タブを選択
+4. 「接続」をクリックしてブラウザ内のターミナルを開く
 
-## デザイン
+#### 方法2: SSM Session Managerで接続
 
-- ダークモード UI
-- カラーテーマ：
-  - 背景: `#0d0f14`
-  - カード背景: `#161a22`
-  - アクセント: `#e86aff`
-  - サブアクセント: `#6f8cff`
-  - 文字色: `#e8e8e8`
+```bash
+# AWS CLIでSSM Session Managerを使用して接続
+aws ssm start-session --target i-0c78bb1a7c6be7fa9
 
-## 開発メモ
+# または、SSM経由でポートフォワーディングしてSSH接続
+aws ssm start-session --target i-0c78bb1a7c6be7fa9 \
+  --document-name AWS-StartPortForwardingSession \
+  --parameters '{"portNumber":["22"],"localPortNumber":["2222"]}'
 
-- ログイン状態は React の内部状態で管理
-- Google Identity Services (GIS) を使用した Google OAuth 認証を実装
-- Laravel Socialite を使用してバックエンドで認証を処理
-- ユーザー情報（ID、名前、メールアドレス、アバター）を表示
-- Cookie やセッション管理は未実装（トークンベースの認証）
+# 別のターミナルでSSH接続
+ssh -i /path/to/your-key.pem -p 2222 ec2-user@localhost
+```
 
+### 初回セットアップコマンド
+
+サーバーに接続後、以下のコマンドを実行してください：
+
+```bash
+# デプロイパスを設定
+DEPLOY_PATH="/mf/himelog-api"
+
+# ストレージディレクトリを作成
+mkdir -p $DEPLOY_PATH/storage/logs
+mkdir -p $DEPLOY_PATH/storage/framework/cache
+mkdir -p $DEPLOY_PATH/storage/framework/sessions
+mkdir -p $DEPLOY_PATH/storage/framework/views
+
+# パーミッションを設定
+chmod -R 775 $DEPLOY_PATH/storage
+chmod -R 775 $DEPLOY_PATH/bootstrap/cache
+
+# 所有者を設定（nginxまたはwww-data）
+chown -R nginx:nginx $DEPLOY_PATH/storage || chown -R www-data:www-data $DEPLOY_PATH/storage
+chown -R nginx:nginx $DEPLOY_PATH/bootstrap/cache || chown -R www-data:www-data $DEPLOY_PATH/bootstrap/cache
+
+# ログファイルを作成
+touch $DEPLOY_PATH/storage/logs/laravel.log
+chmod 664 $DEPLOY_PATH/storage/logs/laravel.log
+chown nginx:nginx $DEPLOY_PATH/storage/logs/laravel.log || chown www-data:www-data $DEPLOY_PATH/storage/logs/laravel.log
+```
+
+### ログの確認
+
+ログファイルは以下のパスにあります：
+
+```bash
+# Laravelのログを確認
+tail -f /mf/himelog-api/storage/logs/laravel.log
+
+# nginxのエラーログを確認（設定により異なる場合があります）
+tail -f /var/log/nginx/error.log
+
+# PHP-FPMのエラーログを確認（設定により異なる場合があります）
+tail -f /var/log/php-fpm/error.log
+```
