@@ -8,14 +8,24 @@ use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Support\Facades\Log;
 use App\Models\LoginHistory;
 use Illuminate\Support\Str;
+use App\Traits\LogsMethodExecution;
 
 class AuthController extends Controller
 {
+    use LogsMethodExecution;
     public function mockLogin(Request $request): JsonResponse
     {
-        return response()->json([
-            'loggedIn' => true
-        ]);
+        $this->logMethodStart(__FUNCTION__, ['request' => $request], __FILE__, __LINE__);
+        try {
+            $result = response()->json([
+                'loggedIn' => true
+            ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        } catch (\Exception $e) {
+            $this->logMethodEnd(__FUNCTION__, null, __FILE__, __LINE__);
+            throw $e;
+        }
     }
 
     /**
@@ -23,19 +33,24 @@ class AuthController extends Controller
      */
     public function googleRedirect(): JsonResponse
     {
+        $this->logMethodStart(__FUNCTION__, [], __FILE__, __LINE__);
         try {
             $url = Socialite::driver('google')
                 ->redirect()
                 ->getTargetUrl();
             
-            return response()->json([
+            $result = response()->json([
                 'redirectUrl' => $url
             ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         } catch (\Exception $e) {
             Log::error('Google redirect error: ' . $e->getMessage());
-            return response()->json([
+            $result = response()->json([
                 'error' => 'Failed to generate redirect URL'
             ], 500);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         }
     }
 
@@ -44,10 +59,11 @@ class AuthController extends Controller
      */
     public function googleCallback(Request $request): JsonResponse
     {
+        $this->logMethodStart(__FUNCTION__, ['request' => $request], __FILE__, __LINE__);
         try {
             $user = Socialite::driver('google')->user();
             
-            return response()->json([
+            $result = response()->json([
                 'loggedIn' => true,
                 'user' => [
                     'id' => $user->getId(),
@@ -56,12 +72,16 @@ class AuthController extends Controller
                     'avatar' => $user->getAvatar(),
                 ]
             ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         } catch (\Exception $e) {
             Log::error('Google callback error: ' . $e->getMessage());
-            return response()->json([
+            $result = response()->json([
                 'error' => 'Authentication failed',
                 'message' => $e->getMessage()
             ], 401);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         }
     }
 
@@ -71,6 +91,7 @@ class AuthController extends Controller
      */
     public function googleLogin(Request $request): JsonResponse
     {
+        $this->logMethodStart(__FUNCTION__, ['request' => $request], __FILE__, __LINE__);
         // リクエストが到達しているか確認
         Log::info('Google login: Request received', [
             'method' => $request->method(),
@@ -161,7 +182,7 @@ class AuthController extends Controller
                 Log::error('Failed to save login history: ' . $e->getMessage());
             }
             
-            return response()->json([
+            $result = response()->json([
                 'loggedIn' => true,
                 'user' => [
                     'id' => $userId,
@@ -170,15 +191,19 @@ class AuthController extends Controller
                     'avatar' => $userPicture,
                 ]
             ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         } catch (\Exception $e) {
             Log::error('Google login error: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
             ]);
-            return response()->json([
+            $result = response()->json([
                 'error' => 'Authentication failed',
                 'message' => $e->getMessage(),
                 'loggedIn' => false
             ], 401);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         }
     }
 
@@ -187,6 +212,7 @@ class AuthController extends Controller
      */
     public function logout(Request $request): JsonResponse
     {
+        $this->logMethodStart(__FUNCTION__, ['request' => $request], __FILE__, __LINE__);
         try {
             Log::info('Logout: Request received', [
                 'ip' => $request->ip(),
@@ -196,16 +222,20 @@ class AuthController extends Controller
             // 将来的にセッション管理を実装する場合の処理をここに追加
             // 例: セッションの無効化、トークンの削除など
 
-            return response()->json([
+            $result = response()->json([
                 'success' => true,
                 'message' => 'Logged out successfully'
             ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         } catch (\Exception $e) {
             Log::error('Logout error: ' . $e->getMessage());
-            return response()->json([
+            $result = response()->json([
                 'success' => true, // エラーが発生してもログアウトは成功とする
                 'message' => 'Logged out'
             ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         }
     }
 }

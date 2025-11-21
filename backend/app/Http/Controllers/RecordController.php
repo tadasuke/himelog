@@ -7,14 +7,17 @@ use Illuminate\Http\JsonResponse;
 use App\Models\Record;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use App\Traits\LogsMethodExecution;
 
 class RecordController extends Controller
 {
+    use LogsMethodExecution;
     /**
      * 記録を登録
      */
     public function store(Request $request): JsonResponse
     {
+        $this->logMethodStart(__FUNCTION__, ['request' => $request], __FILE__, __LINE__);
         try {
             $validator = Validator::make($request->all(), [
                 'user_id' => 'required|string',
@@ -51,16 +54,20 @@ class RecordController extends Controller
 
             Log::info('Record created', ['record_id' => $record->id, 'user_id' => $record->user_id]);
 
-            return response()->json([
+            $result = response()->json([
                 'success' => true,
                 'record' => $record
             ], 201);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         } catch (\Exception $e) {
             Log::error('Record creation error: ' . $e->getMessage());
-            return response()->json([
+            $result = response()->json([
                 'error' => 'Failed to create record',
                 'message' => $e->getMessage()
             ], 500);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         }
     }
 
@@ -69,6 +76,7 @@ class RecordController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $this->logMethodStart(__FUNCTION__, ['request' => $request], __FILE__, __LINE__);
         try {
             $userId = $request->query('user_id');
             
@@ -82,16 +90,20 @@ class RecordController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            return response()->json([
+            $result = response()->json([
                 'success' => true,
                 'records' => $records
             ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         } catch (\Exception $e) {
             Log::error('Record fetch error: ' . $e->getMessage());
-            return response()->json([
+            $result = response()->json([
                 'error' => 'Failed to fetch records',
                 'message' => $e->getMessage()
             ], 500);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         }
     }
 
@@ -100,6 +112,7 @@ class RecordController extends Controller
      */
     public function getShopNames(Request $request): JsonResponse
     {
+        $this->logMethodStart(__FUNCTION__, ['request' => $request], __FILE__, __LINE__);
         try {
             $userId = $request->query('user_id');
             $shopType = $request->query('shop_type');
@@ -123,16 +136,20 @@ class RecordController extends Controller
                 ->sort()
                 ->values();
 
-            return response()->json([
+            $result = response()->json([
                 'success' => true,
                 'shop_names' => $shopNames
             ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         } catch (\Exception $e) {
             Log::error('Shop names fetch error: ' . $e->getMessage());
-            return response()->json([
+            $result = response()->json([
                 'error' => 'Failed to fetch shop names',
                 'message' => $e->getMessage()
             ], 500);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         }
     }
 
@@ -141,6 +158,7 @@ class RecordController extends Controller
      */
     public function getGirlNames(Request $request): JsonResponse
     {
+        $this->logMethodStart(__FUNCTION__, ['request' => $request], __FILE__, __LINE__);
         try {
             $userId = $request->query('user_id');
             $shopType = $request->query('shop_type');
@@ -172,16 +190,20 @@ class RecordController extends Controller
                 ->sort()
                 ->values();
 
-            return response()->json([
+            $result = response()->json([
                 'success' => true,
                 'girl_names' => $girlNames
             ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         } catch (\Exception $e) {
             Log::error('Girl names fetch error: ' . $e->getMessage());
-            return response()->json([
+            $result = response()->json([
                 'error' => 'Failed to fetch girl names',
                 'message' => $e->getMessage()
             ], 500);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         }
     }
 
@@ -190,6 +212,7 @@ class RecordController extends Controller
      */
     public function update(Request $request, string $id): JsonResponse
     {
+        $this->logMethodStart(__FUNCTION__, ['request' => $request, 'id' => $id], __FILE__, __LINE__);
         try {
             $record = Record::find($id);
             
@@ -232,16 +255,20 @@ class RecordController extends Controller
 
             Log::info('Record updated', ['record_id' => $record->id, 'user_id' => $record->user_id]);
 
-            return response()->json([
+            $result = response()->json([
                 'success' => true,
                 'record' => $record
             ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         } catch (\Exception $e) {
             Log::error('Record update error: ' . $e->getMessage());
-            return response()->json([
+            $result = response()->json([
                 'error' => 'Failed to update record',
                 'message' => $e->getMessage()
             ], 500);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         }
     }
 
@@ -250,6 +277,7 @@ class RecordController extends Controller
      */
     public function destroy(string $id): JsonResponse
     {
+        $this->logMethodStart(__FUNCTION__, ['id' => $id], __FILE__, __LINE__);
         try {
             $record = Record::find($id);
             
@@ -263,16 +291,20 @@ class RecordController extends Controller
 
             Log::info('Record deleted', ['record_id' => $id, 'user_id' => $record->user_id]);
 
-            return response()->json([
+            $result = response()->json([
                 'success' => true,
                 'message' => 'Record deleted successfully'
             ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         } catch (\Exception $e) {
             Log::error('Record deletion error: ' . $e->getMessage());
-            return response()->json([
+            $result = response()->json([
                 'error' => 'Failed to delete record',
                 'message' => $e->getMessage()
             ], 500);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         }
     }
 }

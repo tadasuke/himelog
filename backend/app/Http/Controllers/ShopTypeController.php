@@ -8,14 +8,17 @@ use App\Models\ShopType;
 use App\Models\Record;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use App\Traits\LogsMethodExecution;
 
 class ShopTypeController extends Controller
 {
+    use LogsMethodExecution;
     /**
      * お店の種類一覧を取得
      */
     public function index(Request $request): JsonResponse
     {
+        $this->logMethodStart(__FUNCTION__, ['request' => $request], __FILE__, __LINE__);
         try {
             $userId = $request->query('user_id');
             
@@ -26,10 +29,12 @@ class ShopTypeController extends Controller
 
             // ユーザーIDが提供されていない場合は、デフォルトの並び順で返す
             if (!$userId) {
-                return response()->json([
+                $result = response()->json([
                     'success' => true,
                     'shop_types' => $allShopTypes
                 ]);
+                $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+                return $result;
             }
 
             // ユーザーの最新の記録のお店の種類を取得
@@ -74,10 +79,12 @@ class ShopTypeController extends Controller
                 return $a->display_order - $b->display_order;
             })->values();
 
-            return response()->json([
+            $result = response()->json([
                 'success' => true,
                 'shop_types' => $sortedShopTypes
             ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         } catch (\Exception $e) {
             Log::error('Shop type fetch error', [
                 'message' => $e->getMessage(),
@@ -87,10 +94,12 @@ class ShopTypeController extends Controller
                 'trace' => $e->getTraceAsString(),
                 'user_id' => $userId ?? null,
             ]);
-            return response()->json([
+            $result = response()->json([
                 'error' => 'Failed to fetch shop types',
                 'message' => $e->getMessage()
             ], 500);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
         }
     }
 }
