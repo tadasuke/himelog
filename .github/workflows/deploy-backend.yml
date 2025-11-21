@@ -39,6 +39,83 @@ jobs:
           role-session-name: GitHubActions-DeployBackend
           aws-region: ap-northeast-1
 
+      - name: Check EC2 instance status
+        run: |
+          INSTANCE_ID="i-0c78bb1a7c6be7fa9"
+          
+          echo "Checking EC2 instance status: $INSTANCE_ID"
+          
+          # インスタンスの存在と状態を確認
+          INSTANCE_INFO=$(aws ec2 describe-instances \
+            --instance-ids "$INSTANCE_ID" \
+            --query 'Reservations[0].Instances[0].[State.Name, IamInstanceProfile.Arn, Tags[?Key==`Name`].Value | [0]]' \
+            --output text 2>&1) || {
+            echo "Error: Failed to describe instance"
+            echo "Output: $INSTANCE_INFO"
+            echo ""
+            echo "Possible issues:"
+            echo "1. Instance ID is incorrect: $INSTANCE_ID"
+            echo "2. Instance does not exist in this AWS account"
+            echo "3. IAM role does not have ec2:DescribeInstances permission"
+            exit 1
+          }
+          
+          if [ -z "$INSTANCE_INFO" ] || [ "$INSTANCE_INFO" = "None" ]; then
+            echo "Error: Instance not found: $INSTANCE_ID"
+            echo "Please verify the instance ID is correct"
+            exit 1
+          fi
+          
+          INSTANCE_STATE=$(echo "$INSTANCE_INFO" | awk '{print $1}')
+          IAM_PROFILE=$(echo "$INSTANCE_INFO" | awk '{print $2}')
+          INSTANCE_NAME=$(echo "$INSTANCE_INFO" | awk '{print $3}')
+          
+          echo "Instance Name: $INSTANCE_NAME"
+          echo "Instance State: $INSTANCE_STATE"
+          echo "IAM Instance Profile: $IAM_PROFILE"
+          
+          if [ "$INSTANCE_STATE" != "running" ]; then
+            echo "Error: Instance is not running (current state: $INSTANCE_STATE)"
+            echo "SSM commands can only be sent to running instances"
+            echo ""
+            echo "Please start the instance first:"
+            echo "  aws ec2 start-instances --instance-ids $INSTANCE_ID"
+            exit 1
+          fi
+          
+          # SSMエージェントの状態を確認
+          echo ""
+          echo "Checking SSM agent status..."
+          SSM_STATUS=$(aws ssm describe-instance-information \
+            --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
+            --query 'InstanceInformationList[0].[PingStatus, LastPingDateTime]' \
+            --output text 2>&1) || {
+            echo "Warning: Could not check SSM agent status"
+            echo "This might mean SSM agent is not installed or configured"
+            echo "Output: $SSM_STATUS"
+          }
+          
+          if [ -n "$SSM_STATUS" ] && [ "$SSM_STATUS" != "None" ]; then
+            SSM_PING_STATUS=$(echo "$SSM_STATUS" | awk '{print $1}')
+            SSM_LAST_PING=$(echo "$SSM_STATUS" | awk '{print $2}')
+            echo "SSM Ping Status: $SSM_PING_STATUS"
+            echo "Last Ping: $SSM_LAST_PING"
+            
+            if [ "$SSM_PING_STATUS" != "Online" ]; then
+              echo "Warning: SSM agent is not online (status: $SSM_PING_STATUS)"
+              echo "SSM commands may fail. Please ensure:"
+              echo "1. SSM agent is installed on the instance"
+              echo "2. Instance has an IAM role with SSM permissions attached"
+              echo "3. SSM agent service is running on the instance"
+            fi
+          else
+            echo "Warning: SSM instance information not found"
+            echo "Please ensure:"
+            echo "1. SSM agent is installed and running on the instance"
+            echo "2. Instance has an IAM role with AmazonSSMManagedInstanceCore policy"
+            echo "3. VPC endpoints are configured for Systems Manager (if instance is in VPC)"
+          fi
+
       - name: Deploy via SSM - Git pull and deploy backend only
         id: deploy
         run: |
@@ -88,15 +165,24 @@ jobs:
           set -e
           
           if [ $EXIT_CODE -ne 0 ]; then
-            echo "Error sending SSM command (exit code: $EXIT_CODE):"
+            echo "❌ Error sending SSM command (exit code: $EXIT_CODE)"
+            echo "Command output:"
             echo "$COMMAND_OUTPUT"
-            echo "Full error details:"
+            echo ""
+            echo "🔍 Troubleshooting steps:"
+            echo "1. Verify instance ID is correct: $INSTANCE_ID"
+            echo "2. Check instance is running: aws ec2 describe-instances --instance-ids $INSTANCE_ID"
+            echo "3. Verify SSM agent is online: aws ssm describe-instance-information --filters Key=InstanceIds,Values=$INSTANCE_ID"
+            echo "4. Check IAM role has SSM permissions attached to the instance"
+            echo "5. Verify VPC endpoints are configured (if instance is in VPC)"
+            echo ""
+            echo "Full error response:"
             aws ssm send-command \
               --instance-ids "$INSTANCE_ID" \
               --document-name "AWS-RunShellScript" \
               --parameters file:///tmp/ssm-params.json \
               --cloud-watch-output-config 'CloudWatchOutputEnabled=true' \
-              --output json || true
+              --output json 2>&1 || true
             exit 1
           fi
           
