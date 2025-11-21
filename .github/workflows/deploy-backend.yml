@@ -40,65 +40,122 @@ jobs:
           aws-region: ap-northeast-1
 
       - name: Deploy via SSM - Git pull and deploy backend only
+        id: deploy
         run: |
+          set -e
           INSTANCE_ID="i-0c78bb1a7c6be7fa9"
           DEPLOY_PATH="/mf"
           REPO_PATH="/tmp/himelog-repo"
           
-          # SSMでコマンドを実行
+          # JSONパラメータファイルを作成
+          cat > /tmp/ssm-params.json << EOF
+          {
+            "commands": [
+              "cd $REPO_PATH || (mkdir -p $REPO_PATH && cd $REPO_PATH && git clone git@github.com:tadasuke/himelog.git .)",
+              "cd $REPO_PATH",
+              "git fetch origin",
+              "git checkout develop",
+              "git pull origin develop",
+              "rsync -av --delete $REPO_PATH/backend/ $DEPLOY_PATH/ --exclude=.git",
+              "cd $DEPLOY_PATH",
+              "composer install --no-dev --optimize-autoloader",
+              "php artisan config:clear",
+              "php artisan cache:clear",
+              "php artisan route:clear",
+              "php artisan view:clear",
+              "php artisan migrate --force",
+              "php artisan config:cache",
+              "php artisan route:cache",
+              "php artisan view:cache"
+            ]
+          }
+          EOF
+          
+          echo "Sending SSM command to instance: $INSTANCE_ID"
+          
+          # SSMコマンドを実行
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
-            --parameters "commands=[
-              'cd $REPO_PATH || (mkdir -p $REPO_PATH && cd $REPO_PATH && git clone git@github.com:tadasuke/himelog.git .)',
-              'cd $REPO_PATH',
-              'git fetch origin',
-              'git checkout develop',
-              'git pull origin develop',
-              'rsync -av --delete $REPO_PATH/backend/ $DEPLOY_PATH/ --exclude=.git',
-              'cd $DEPLOY_PATH',
-              'composer install --no-dev --optimize-autoloader',
-              'php artisan config:clear',
-              'php artisan cache:clear',
-              'php artisan route:clear',
-              'php artisan view:clear',
-              'php artisan migrate --force',
-              'php artisan config:cache',
-              'php artisan route:cache',
-              'php artisan view:cache'
-            ]" \
-            --output-s3-bucket-name "" \
+            --parameters file:///tmp/ssm-params.json \
             --cloud-watch-output-config 'CloudWatchOutputEnabled=true' \
             --query 'Command.CommandId' \
-            --output text)
+            --output text 2>&1)
+          
+          EXIT_CODE=$?
+          
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "Error sending SSM command (exit code: $EXIT_CODE):"
+            echo "$COMMAND_ID"
+            exit 1
+          fi
+          
+          if [ -z "$COMMAND_ID" ] || [ "$COMMAND_ID" = "None" ]; then
+            echo "Error: Command ID is empty or None"
+            echo "Response was: $COMMAND_ID"
+            # デバッグ用にフルレスポンスを取得
+            aws ssm send-command \
+              --instance-ids "$INSTANCE_ID" \
+              --document-name "AWS-RunShellScript" \
+              --parameters file:///tmp/ssm-params.json \
+              --cloud-watch-output-config 'CloudWatchOutputEnabled=true' \
+              --output json
+            exit 1
+          fi
           
           echo "command_id=$COMMAND_ID" >> $GITHUB_ENV
-          echo "Command sent: $COMMAND_ID"
+          echo "Command sent successfully: $COMMAND_ID"
 
       - name: Wait for command completion
         run: |
+          set -e
           INSTANCE_ID="i-0c78bb1a7c6be7fa9"
           COMMAND_ID="${{ env.command_id }}"
           
-          echo "Waiting for command to complete..."
+          if [ -z "$COMMAND_ID" ]; then
+            echo "Error: COMMAND_ID is not set"
+            exit 1
+          fi
+          
+          echo "Waiting for command to complete: $COMMAND_ID"
+          MAX_WAIT_TIME=600  # 10分
+          ELAPSED_TIME=0
+          
           while true; do
             STATUS=$(aws ssm get-command-invocation \
               --command-id "$COMMAND_ID" \
               --instance-id "$INSTANCE_ID" \
               --query 'Status' \
-              --output text)
+              --output text 2>&1) || {
+              echo "Error getting command status:"
+              echo "$STATUS"
+              exit 1
+            }
             
-            echo "Command status: $STATUS"
+            echo "Command status: $STATUS (elapsed: ${ELAPSED_TIME}s)"
             
             if [ "$STATUS" = "Success" ]; then
               echo "Command completed successfully"
               break
             elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ] || [ "$STATUS" = "TimedOut" ]; then
               echo "Command failed with status: $STATUS"
+              # エラー出力も表示
+              aws ssm get-command-invocation \
+                --command-id "$COMMAND_ID" \
+                --instance-id "$INSTANCE_ID" \
+                --query '[StandardOutputContent, StandardErrorContent]' \
+                --output text
+              exit 1
+            fi
+            
+            # タイムアウトチェック
+            if [ $ELAPSED_TIME -ge $MAX_WAIT_TIME ]; then
+              echo "Error: Command timed out after ${MAX_WAIT_TIME}s"
               exit 1
             fi
             
             sleep 5
+            ELAPSED_TIME=$((ELAPSED_TIME + 5))
           done
 
       - name: Show command output
