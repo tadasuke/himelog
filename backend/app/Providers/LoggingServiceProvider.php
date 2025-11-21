@@ -98,15 +98,48 @@ class LoggingServiceProvider extends ServiceProvider
 
             // 実際の接続を試みて、接続情報を確認
             try {
-                $pdo = DB::connection()->getPdo();
-                $serverInfo = $pdo->getAttribute(\PDO::ATTR_SERVER_INFO);
-                $serverVersion = $pdo->getAttribute(\PDO::ATTR_SERVER_VERSION);
+                $connection = DB::connection();
+                $pdo = $connection->getPdo();
+                $driverName = $connection->getDriverName();
                 
-                Log::info('Database connection successful', [
-                    'server_info' => $serverInfo,
-                    'server_version' => $serverVersion,
+                // SQLiteが使用されている場合はエラーをログに記録（例外はスローしない - ミドルウェアで処理）
+                if ($driverName === 'sqlite') {
+                    Log::error('SQLite connection detected - SQLite is not allowed', [
+                        'driver' => $driverName,
+                        'default_connection' => config('database.default'),
+                        'message' => 'SQLite is not allowed. MySQL connection is required.',
+                    ]);
+                    // ログに記録するだけで、例外はスローしない（ミドルウェアで500エラーを返す）
+                    return;
+                }
+                
+                $connectionInfo = [
+                    'driver' => $driverName,
                     'connection_status' => 'connected',
-                ]);
+                ];
+                
+                // MySQL/MariaDBの場合は、サーバー情報を取得
+                if ($driverName === 'mysql' || $driverName === 'mariadb') {
+                    try {
+                        $serverInfo = $pdo->getAttribute(\PDO::ATTR_SERVER_INFO);
+                        $serverVersion = $pdo->getAttribute(\PDO::ATTR_SERVER_VERSION);
+                        $connectionInfo['server_info'] = $serverInfo;
+                        $connectionInfo['server_version'] = $serverVersion;
+                    } catch (\Exception $attrException) {
+                        // 属性取得に失敗しても接続は成功している
+                        $connectionInfo['attribute_error'] = $attrException->getMessage();
+                    }
+                } else {
+                    // MySQL/MariaDB以外のドライバーは許可しない（ログに記録するだけ）
+                    Log::error('Invalid database driver detected', [
+                        'driver' => $driverName,
+                        'message' => 'Only MySQL/MariaDB connections are allowed.',
+                    ]);
+                    // ログに記録するだけで、例外はスローしない（ミドルウェアで500エラーを返す）
+                    return;
+                }
+                
+                Log::info('Database connection successful', $connectionInfo);
             } catch (\Exception $e) {
                 Log::error('Database connection failed', [
                     'error' => $e->getMessage(),
@@ -115,6 +148,7 @@ class LoggingServiceProvider extends ServiceProvider
                     'line' => $e->getLine(),
                     'trace' => $e->getTraceAsString(),
                 ]);
+                // 接続エラーはログに記録するだけ（ミドルウェアで500エラーを返す）
             }
         } catch (\Exception $e) {
             Log::error('Failed to log database connection info', [
