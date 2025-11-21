@@ -1,0 +1,42 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: himelog_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: himelog
+      MYSQL_USER: himelog_user
+      MYSQL_PASSWORD: himelog_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - himelog_network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: himelog_phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: himelog_user
+      PMA_PASSWORD: himelog_password
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - "8080:80"
+    depends_on:
+      - mysql
+    networks:
+      - himelog_network
+
+volumes:
+  mysql_data:
+
+networks:
+  himelog_network:
+    driver: bridge
+

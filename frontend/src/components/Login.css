@@ -1,0 +1,143 @@
+.login-container {
+  min-height: 100vh;
+  min-height: 100dvh; /* モバイルのビューポート高さに対応 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: linear-gradient(135deg, #0d0f14 0%, #161a22 100%);
+}
+
+.login-card {
+  background-color: #161a22;
+  border-radius: 20px;
+  padding: 32px 24px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4),
+              0 0 0 1px rgba(232, 106, 255, 0.1);
+  border: 1px solid rgba(232, 106, 255, 0.15);
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.login-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #e8e8e8;
+  margin-bottom: 8px;
+  letter-spacing: 0.3px;
+  background: linear-gradient(135deg, #e86aff 0%, #6f8cff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.2;
+}
+
+.login-subtitle {
+  font-size: 13px;
+  color: #a0a0a0;
+  letter-spacing: 0.2px;
+  line-height: 1.4;
+}
+
+.google-login-btn {
+  width: 100%;
+  min-height: 48px; /* タッチターゲットサイズ確保 */
+  padding: 14px 20px;
+  background: linear-gradient(135deg, rgba(232, 106, 255, 0.1) 0%, rgba(111, 140, 255, 0.1) 100%);
+  border: 1px solid rgba(232, 106, 255, 0.3);
+  border-radius: 12px;
+  color: #e8e8e8;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.google-login-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(232, 106, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.google-login-btn:hover::before {
+  left: 100%;
+}
+
+.google-login-btn:hover {
+  border-color: rgba(232, 106, 255, 0.5);
+  box-shadow: 0 0 20px rgba(232, 106, 255, 0.3),
+              0 0 40px rgba(111, 140, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.google-login-btn:active {
+  transform: scale(0.98);
+  background: linear-gradient(135deg, rgba(232, 106, 255, 0.15) 0%, rgba(111, 140, 255, 0.15) 100%);
+}
+
+.google-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.google-signin-button {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 48px;
+}
+
+/* Google ボタンのスタイル調整 */
+.google-signin-button > div {
+  width: 100% !important;
+}
+
+.google-signin-button iframe {
+  width: 100% !important;
+}
+
+/* タブレット以上 */
+@media (min-width: 768px) {
+  .login-container {
+    padding: 24px;
+  }
+
+  .login-card {
+    padding: 48px 40px;
+    border-radius: 16px;
+  }
+
+  .login-title {
+    font-size: 36px;
+  }
+
+  .login-subtitle {
+    font-size: 14px;
+  }
+
+  .google-login-btn {
+    font-size: 16px;
+    padding: 14px 24px;
+  }
+}
+

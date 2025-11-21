@@ -1,0 +1,162 @@
+.mypage-container {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 20px 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-bottom: 100px; /* ナビゲーションバーのための余白を確保 */
+}
+
+.mypage-user-section {
+  margin-bottom: 32px;
+  padding-top: 24px;
+}
+
+.mypage-user-info {
+  padding: 24px;
+  background-color: #161a22;
+  border-radius: 16px;
+  border: 1px solid rgba(232, 106, 255, 0.15);
+}
+
+.mypage-user-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 2px solid rgba(232, 106, 255, 0.3);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(232, 106, 255, 0.05);
+  color: #e8e8e8;
+}
+
+.mypage-user-avatar svg {
+  width: 50px;
+  height: 50px;
+}
+
+.mypage-user-details {
+  flex: 1;
+}
+
+.mypage-user-name {
+  font-size: 20px;
+  font-weight: 600;
+  color: #e8e8e8;
+  margin-bottom: 8px;
+  letter-spacing: 0.2px;
+}
+
+.mypage-user-id {
+  font-size: 14px;
+  color: #6f8cff;
+  margin-bottom: 4px;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.1px;
+}
+
+.mypage-user-email {
+  font-size: 14px;
+  color: #a0a0a0;
+  letter-spacing: 0.1px;
+  margin: 0;
+}
+
+.mypage-menu-section {
+  margin-top: 32px;
+}
+
+.mypage-menu-list {
+  background-color: #161a22;
+  border-radius: 16px;
+  border: 1px solid rgba(232, 106, 255, 0.15);
+  overflow: hidden;
+}
+
+.mypage-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(232, 106, 255, 0.1);
+  color: #e8e8e8;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.mypage-menu-item:last-child {
+  border-bottom: none;
+}
+
+.mypage-menu-item:active {
+  background-color: rgba(232, 106, 255, 0.1);
+}
+
+.mypage-menu-label {
+  flex: 1;
+  text-align: left;
+  letter-spacing: 0.1px;
+}
+
+.mypage-menu-arrow {
+  color: #6f8cff;
+  font-size: 24px;
+  font-weight: 300;
+  margin-left: 12px;
+}
+
+/* タブレット以上 */
+@media (min-width: 768px) {
+  .mypage-container {
+    padding: 40px 24px;
+  }
+
+  .mypage-user-section {
+    margin-bottom: 40px;
+    padding-top: 40px;
+  }
+
+  .mypage-user-info {
+    padding: 32px;
+  }
+
+  .mypage-user-avatar {
+    width: 100px;
+    height: 100px;
+  }
+
+  .mypage-user-avatar svg {
+    width: 60px;
+    height: 60px;
+  }
+
+  .mypage-user-name {
+    font-size: 24px;
+  }
+
+  .mypage-user-id {
+    font-size: 15px;
+  }
+
+  .mypage-user-email {
+    font-size: 14px;
+  }
+
+  .mypage-menu-item {
+    padding: 20px 24px;
+    font-size: 17px;
+  }
+
+  .mypage-menu-item:hover {
+    background-color: rgba(232, 106, 255, 0.1);
+  }
+}
+

@@ -1,0 +1,40 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+}
+
+body {
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app {
+  min-height: 100vh;
+  min-height: 100dvh; /* モバイルのビューポート高さに対応 */
+  background-color: #0d0f14;
+  color: #e8e8e8;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* iOS Safari のバウンススクロールを防ぐ */
+  overscroll-behavior: none;
+  /* テキスト選択の最適化 */
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ボタンやリンクはテキスト選択可能に */
+button,
+a {
+  -webkit-user-select: auto;
+  user-select: auto;
+}

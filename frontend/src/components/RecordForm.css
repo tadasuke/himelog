@@ -1,0 +1,228 @@
+.record-form-container {
+  background-color: #161a22;
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid rgba(232, 106, 255, 0.15);
+  margin-bottom: 32px;
+}
+
+.record-form-title {
+  font-size: 20px;
+  font-weight: 500;
+  color: #e8e8e8;
+  margin-bottom: 24px;
+  letter-spacing: 0.2px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: color 0.2s ease;
+}
+
+.form-cancel-btn {
+  padding: 10px 18px;
+  background: transparent;
+  border: 1px solid rgba(232, 106, 255, 0.3);
+  border-radius: 8px;
+  color: #e86aff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  letter-spacing: 0.1px;
+  margin-bottom: 16px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.form-cancel-btn:hover:not(:disabled) {
+  background: rgba(232, 106, 255, 0.1);
+  border-color: rgba(232, 106, 255, 0.5);
+}
+
+.form-cancel-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.form-cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.record-form-title:hover {
+  color: #e86aff;
+}
+
+.expand-icon {
+  font-size: 14px;
+  color: #e86aff;
+  transition: transform 0.3s ease;
+  margin-left: 12px;
+}
+
+.expand-icon.expanded {
+  transform: rotate(180deg);
+}
+
+.record-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #e8e8e8;
+  letter-spacing: 0.1px;
+}
+
+.required {
+  color: #e86aff;
+  margin-left: 4px;
+}
+
+.form-input,
+.form-textarea,
+.form-select {
+  padding: 12px 16px;
+  background-color: #0d0f14;
+  border: 1px solid rgba(232, 106, 255, 0.2);
+  border-radius: 8px;
+  color: #e8e8e8;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.3s ease;
+  letter-spacing: 0.1px;
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+  outline: none;
+  border-color: rgba(232, 106, 255, 0.5);
+  box-shadow: 0 0 0 3px rgba(232, 106, 255, 0.1);
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: #6a6a6a;
+}
+
+.form-input:disabled,
+.form-textarea:disabled,
+.form-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.form-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23e86aff' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 40px;
+  cursor: pointer;
+}
+
+.form-select option {
+  background-color: #0d0f14;
+  color: #e8e8e8;
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.6;
+}
+
+.form-error {
+  padding: 12px 16px;
+  background-color: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  border-radius: 8px;
+  color: #ff6b6b;
+  font-size: 14px;
+  letter-spacing: 0.1px;
+}
+
+.form-submit-btn {
+  padding: 14px 24px;
+  background: linear-gradient(135deg, #e86aff 0%, #6f8cff 100%);
+  border: none;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  letter-spacing: 0.1px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.form-submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(232, 106, 255, 0.3);
+}
+
+.form-submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(232, 106, 255, 0.2);
+}
+
+.form-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* タブレット以上 */
+@media (min-width: 768px) {
+  .record-form-container {
+    padding: 32px;
+  }
+
+  .record-form-title {
+    font-size: 24px;
+    margin-bottom: 32px;
+  }
+
+  .form-group {
+    gap: 10px;
+  }
+
+  .form-label {
+    font-size: 15px;
+  }
+
+  .form-input,
+  .form-textarea,
+  .form-select {
+    padding: 14px 18px;
+    font-size: 15px;
+  }
+
+  .form-select {
+    padding-right: 44px;
+    background-position: right 18px center;
+  }
+}
+
