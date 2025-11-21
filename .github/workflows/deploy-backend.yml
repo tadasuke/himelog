@@ -1,0 +1,115 @@
+name: Deploy Backend to EC2
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'develop'
+        required: true
+        default: 'develop'
+        type: choice
+        options:
+          - develop
+          - main
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::034427362829:role/himelog_ec2_develop
+          role-session-name: GitHubActions-DeployBackend
+          aws-region: ap-northeast-1
+
+      - name: Deploy via SSM - Git pull and deploy backend only
+        run: |
+          INSTANCE_ID="i-0c78bb1a7c6be7fa9"
+          DEPLOY_PATH="/mf"
+          REPO_PATH="/tmp/himelog-repo"
+          
+          # SSMでコマンドを実行
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --parameters "commands=[
+              'cd $REPO_PATH || (mkdir -p $REPO_PATH && cd $REPO_PATH && git clone git@github.com:tadasuke/himelog.git .)',
+              'cd $REPO_PATH',
+              'git fetch origin',
+              'git checkout develop',
+              'git pull origin develop',
+              'rsync -av --delete $REPO_PATH/backend/ $DEPLOY_PATH/ --exclude=.git',
+              'cd $DEPLOY_PATH',
+              'composer install --no-dev --optimize-autoloader',
+              'php artisan config:clear',
+              'php artisan cache:clear',
+              'php artisan route:clear',
+              'php artisan view:clear',
+              'php artisan migrate --force',
+              'php artisan config:cache',
+              'php artisan route:cache',
+              'php artisan view:cache'
+            ]" \
+            --output-s3-bucket-name "" \
+            --cloud-watch-output-config 'CloudWatchOutputEnabled=true' \
+            --query 'Command.CommandId' \
+            --output text)
+          
+          echo "command_id=$COMMAND_ID" >> $GITHUB_ENV
+          echo "Command sent: $COMMAND_ID"
+
+      - name: Wait for command completion
+        run: |
+          INSTANCE_ID="i-0c78bb1a7c6be7fa9"
+          COMMAND_ID="${{ env.command_id }}"
+          
+          echo "Waiting for command to complete..."
+          while true; do
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query 'Status' \
+              --output text)
+            
+            echo "Command status: $STATUS"
+            
+            if [ "$STATUS" = "Success" ]; then
+              echo "Command completed successfully"
+              break
+            elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ] || [ "$STATUS" = "TimedOut" ]; then
+              echo "Command failed with status: $STATUS"
+              exit 1
+            fi
+            
+            sleep 5
+          done
+
+      - name: Show command output
+        run: |
+          INSTANCE_ID="i-0c78bb1a7c6be7fa9"
+          COMMAND_ID="${{ env.command_id }}"
+          
+          echo "=== Command Output ==="
+          aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query '[StandardOutputContent, StandardErrorContent]' \
+            --output text
+
