@@ -38,50 +38,28 @@ class ConfigCacheServiceProvider extends EventServiceProvider
      */
     private function handleConfigCacheCommand(): void
     {
-        // 現在のドメインを取得（CLI実行時はAPP_URLから取得）
-        $domain = $this->getCurrentDomainForConfigCache();
-        
         // ローカル環境の場合は何もしない
-        if ($this->isLocalEnvironment($domain)) {
-            Log::info('Local environment detected. Skipping Secrets Manager lookup for config:cache.', [
-                'domain' => $domain,
-            ]);
+        if ($this->isLocalEnvironment()) {
+            Log::info('Local environment detected. Skipping Secrets Manager lookup for config:cache.');
             return;
         }
 
-        // ドメインが取得できない場合はエラー
-        if (empty($domain)) {
-            throw new \RuntimeException(
-                'Domain could not be determined for config:cache command. ' .
-                'Please set APP_URL environment variable to the domain name.'
-            );
+        // AWS_SECRET_ARNが設定されていない場合はスキップ（エラーにはしない）
+        if (empty(env('AWS_SECRET_ARN'))) {
+            Log::warning('AWS_SECRET_ARN is not set. Skipping Secrets Manager lookup for config:cache.');
+            return;
         }
 
         try {
-            Log::info('Fetching database credentials from AWS Secrets Manager before config:cache...', [
-                'domain' => $domain,
-            ]);
+            Log::info('Fetching database credentials from AWS Secrets Manager before config:cache...');
             
-            // ドメインからARNを決定してSecrets Managerサービスを作成
-            $secretsService = new \App\Services\AwsSecretsManagerService($domain);
-            
-            // ARNが設定されていない場合はエラー
-            if (!$secretsService->hasArn()) {
-                throw new \InvalidArgumentException(
-                    "No ARN mapping found for domain: {$domain}. " .
-                    "Please add it to the domainArnMapping array in AwsSecretsManagerService."
-                );
-            }
-            
+            $secretsService = new AwsSecretsManagerService();
             $secretsService->setDatabaseCredentialsToEnv();
             
-            Log::info('Database credentials retrieved successfully from Secrets Manager.', [
-                'domain' => $domain,
-            ]);
+            Log::info('Database credentials retrieved successfully from Secrets Manager.');
         } catch (\Exception $e) {
             Log::error('Failed to fetch database credentials from Secrets Manager during config:cache', [
                 'error' => $e->getMessage(),
-                'domain' => $domain,
                 'trace' => $e->getTraceAsString(),
             ]);
             throw $e;
@@ -89,55 +67,12 @@ class ConfigCacheServiceProvider extends EventServiceProvider
     }
 
     /**
-     * config:cacheコマンド実行時のドメインを取得
-     * CLI実行時はAPP_URLからドメインを抽出
-     * 
-     * @return string|null
-     */
-    private function getCurrentDomainForConfigCache(): ?string
-    {
-        // CLI実行時はAPP_URLからドメインを抽出
-        $appUrl = env('APP_URL', '');
-        if (!empty($appUrl)) {
-            $parsed = parse_url($appUrl);
-            if (isset($parsed['host'])) {
-                return $parsed['host'];
-            }
-        }
-        
-        return null;
-    }
-
-    /**
-     * 現在のドメインを取得
-     * 
-     * @return string|null
-     */
-    private function getCurrentDomain(): ?string
-    {
-        return \App\Services\AwsSecretsManagerService::getCurrentDomain();
-    }
-
-    /**
      * ローカル環境かどうかを判定
      *
-     * @param string|null $domain
      * @return bool
      */
-    private function isLocalEnvironment(?string $domain = null): bool
+    private function isLocalEnvironment(): bool
     {
-        // ドメインが指定されている場合、ローカルドメインかどうかを確認
-        if ($domain !== null) {
-            $localDomains = ['localhost', '127.0.0.1', 'localhost:8000', '127.0.0.1:8000'];
-            if (in_array(strtolower($domain), $localDomains)) {
-                return true;
-            }
-            // madfaction.netドメインでない場合はローカル環境とみなす
-            if (!str_ends_with(strtolower($domain), '.madfaction.net')) {
-                return true;
-            }
-        }
-        
         $env = env('APP_ENV', 'production');
         
         // APP_ENVがlocalまたはdevelopmentの場合はローカル環境と判定

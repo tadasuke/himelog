@@ -58,9 +58,6 @@ class DatabaseConnectionServiceProvider extends ServiceProvider
         } catch (\Exception $e) {
             // 接続エラーの場合は無視（後でコマンド実行時にチェックされる）
         }
-        
-        // SQLiteファイルの存在チェックは、データベース接続を実際に使用するコマンド実行時にのみ行う
-        // （アプリケーション起動時やconfig:clearなどのコマンドではスキップ）
     }
 
     /**
@@ -72,16 +69,7 @@ class DatabaseConnectionServiceProvider extends ServiceProvider
         $skipCommands = ['config:clear', 'config:cache', 'route:clear', 'view:clear', 'cache:clear', 'key:generate'];
         
         if ($command !== null && in_array($command, $skipCommands)) {
-            // ただし、SQLiteファイルが存在する場合は警告を出す（エラーにはしない）
-            $sqlitePath = database_path('database.sqlite');
-            if (file_exists($sqlitePath)) {
-                Log::warning('SQLite database file detected (command: ' . $command . ')', [
-                    'path' => $sqlitePath,
-                    'command' => $command,
-                ]);
-                // このコマンドではデータベース接続を使わないので、ファイルの存在チェックはスキップ
-                return;
-            }
+            // このコマンドではデータベース接続を使わないので、チェックはスキップ
             return;
         }
 
@@ -99,7 +87,7 @@ class DatabaseConnectionServiceProvider extends ServiceProvider
         if (file_exists($sqlitePath)) {
             $this->throwSqliteNotAllowedException(
                 "SQLite database file exists at: {$sqlitePath}. SQLite is not allowed. " .
-                "Please delete this file immediately."
+                "Please delete this file immediately using: php artisan sqlite:remove"
             );
         }
 

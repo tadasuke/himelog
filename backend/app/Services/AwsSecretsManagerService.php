@@ -9,22 +9,17 @@ use Illuminate\Support\Facades\Log;
 class AwsSecretsManagerService
 {
     private SecretsManagerClient $client;
-    private ?string $secretArn = null;
+    private string $secretArn;
 
-    /**
-     * ドメインからARNへのマッピング
-     * 
-     * @var array<string, string>
-     */
-    private array $domainArnMapping = [
-        '4zklqklybqhu.madfaction.net' => 'arn:aws:secretsmanager:ap-northeast-1:034427362829:secret:himelog/rds/himelog_develop-UP4R6v',
-    ];
-
-    public function __construct(?string $domain = null)
+    public function __construct()
     {
-        // ドメインが指定されている場合は、ドメインからARNを決定
-        if ($domain !== null) {
-            $this->secretArn = $this->getArnByDomain($domain);
+        $this->secretArn = env('AWS_SECRET_ARN');
+        
+        if (empty($this->secretArn)) {
+            throw new \InvalidArgumentException(
+                'AWS_SECRET_ARN environment variable is not set. ' .
+                'Please set AWS_SECRET_ARN in your .env file or environment configuration.'
+            );
         }
         
         $config = [
@@ -44,73 +39,6 @@ class AwsSecretsManagerService
     }
 
     /**
-     * ドメインからARNを取得
-     * 
-     * @param string $domain
-     * @return string|null
-     */
-    private function getArnByDomain(string $domain): ?string
-    {
-        return $this->domainArnMapping[$domain] ?? null;
-    }
-
-    /**
-     * 現在のドメインからARNを設定
-     * 
-     * @param string $domain
-     * @return void
-     * @throws \InvalidArgumentException
-     */
-    public function setArnByDomain(string $domain): void
-    {
-        $arn = $this->getArnByDomain($domain);
-        
-        if (empty($arn)) {
-            throw new \InvalidArgumentException(
-                "No ARN mapping found for domain: {$domain}. Please add it to the domainArnMapping array."
-            );
-        }
-        
-        $this->secretArn = $arn;
-    }
-
-    /**
-     * ARNが設定されているかどうかを確認
-     * 
-     * @return bool
-     */
-    public function hasArn(): bool
-    {
-        return !empty($this->secretArn);
-    }
-
-    /**
-     * 現在のドメインを取得（HTTPリクエスト時）
-     * 
-     * @return string|null
-     */
-    public static function getCurrentDomain(): ?string
-    {
-        if (app()->runningInConsole()) {
-            // CLI実行時はAPP_URLからドメインを抽出
-            $appUrl = env('APP_URL', '');
-            if (!empty($appUrl)) {
-                $parsed = parse_url($appUrl);
-                return $parsed['host'] ?? null;
-            }
-            return null;
-        }
-        
-        // HTTPリクエスト時はリクエストから取得
-        $request = request();
-        if ($request) {
-            return $request->getHost();
-        }
-        
-        return $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? null;
-    }
-
-    /**
      * Secrets ManagerからDB接続情報を取得
      * 
      * @return array DB接続情報の配列
@@ -118,12 +46,6 @@ class AwsSecretsManagerService
      */
     public function getDatabaseCredentials(): array
     {
-        if (empty($this->secretArn)) {
-            throw new \InvalidArgumentException(
-                'Secret ARN is not set. Please call setArnByDomain() or provide domain to constructor.'
-            );
-        }
-        
         try {
             $result = $this->client->getSecretValue([
                 'SecretId' => $this->secretArn,
@@ -176,9 +98,6 @@ class AwsSecretsManagerService
                 putenv("{$key}={$value}");
                 $_ENV[$key] = $value;
                 $_SERVER[$key] = $value;
-                
-                // LaravelのDotenvが既に読み込まれている場合に備えて、.envファイルを更新
-                // ただし、config:cache実行時は既に.envが読み込まれているため、putenvで十分
             }
         }
     }

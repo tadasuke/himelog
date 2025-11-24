@@ -13,11 +13,6 @@ backend/storage/framework/cache/*
 backend/storage/framework/sessions/*
 backend/storage/framework/views/*
 
-# Database - SQLite is absolutely not allowed
-backend/database/*.sqlite
-backend/database/*.sqlite-journal
-backend/database/*.db
-
 # IDE
 .idea/
 .vscode/
