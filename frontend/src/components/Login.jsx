@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import PropTypes from 'prop-types'
 import './Login.css'
 
 function Login({ onGoogleLogin }) {
@@ -88,6 +89,10 @@ function Login({ onGoogleLogin }) {
       </div>
     </div>
   )
+}
+
+Login.propTypes = {
+  onGoogleLogin: PropTypes.func.isRequired,
 }
 
 export default Login

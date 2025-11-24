@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types'
 import './MyPage.css'
 
 function MyPage({ user, onLogout }) {
@@ -32,6 +33,16 @@ function MyPage({ user, onLogout }) {
       </div>
     </div>
   )
+}
+
+MyPage.propTypes = {
+  user: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string,
+    email: PropTypes.string,
+    avatar: PropTypes.string,
+  }),
+  onLogout: PropTypes.func.isRequired,
 }
 
 export default MyPage

@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import Login from './components/Login'
 import Home from './components/Home'
 import MyPage from './components/MyPage'
+import ShopList from './components/ShopList'
 import BottomNavigation from './components/BottomNavigation'
-import { getApiUrl } from './utils/api'
+import { getApiUrl, removeAuthToken, getAuthToken } from './utils/api'
 import './App.css'
 
 function App() {
@@ -15,6 +16,19 @@ function App() {
   useEffect(() => {
     const savedUser = localStorage.getItem('user')
     const savedIsLoggedIn = localStorage.getItem('isLoggedIn')
+    const authToken = getAuthToken()
+    
+    // 認証トークンがない場合はログイン状態をクリア
+    if (!authToken) {
+      if (savedUser || savedIsLoggedIn) {
+        localStorage.removeItem('user')
+        localStorage.removeItem('isLoggedIn')
+        removeAuthToken()
+        setIsLoggedIn(false)
+        setUser(null)
+      }
+      return
+    }
     
     if (savedUser && savedIsLoggedIn === 'true') {
       try {
@@ -28,7 +42,15 @@ function App() {
         // パースに失敗した場合はクリア
         localStorage.removeItem('user')
         localStorage.removeItem('isLoggedIn')
+        removeAuthToken()
+        setIsLoggedIn(false)
+        setUser(null)
       }
+    } else {
+      // ユーザー情報がない場合はログイン状態をクリア
+      removeAuthToken()
+      setIsLoggedIn(false)
+      setUser(null)
     }
   }, [])
 
@@ -83,6 +105,10 @@ function App() {
         // ローカルストレージに保存
         localStorage.setItem('user', JSON.stringify(data.user))
         localStorage.setItem('isLoggedIn', 'true')
+        // 認証トークンを保存
+        if (credential) {
+          localStorage.setItem('authToken', credential)
+        }
         
         setUser(data.user)
         setIsLoggedIn(true)
@@ -116,6 +142,7 @@ function App() {
       // ローカルストレージをクリア
       localStorage.removeItem('user')
       localStorage.removeItem('isLoggedIn')
+      localStorage.removeItem('authToken')
       
       // フロントエンドの状態をリセット
       setUser(null)
@@ -127,6 +154,7 @@ function App() {
       // エラーが発生しても状態はリセットする
       localStorage.removeItem('user')
       localStorage.removeItem('isLoggedIn')
+      localStorage.removeItem('authToken')
       setUser(null)
       setIsLoggedIn(false)
       setCurrentPage('home') // ログアウト時もホームにリセット
@@ -159,6 +187,8 @@ function App() {
         <>
           {currentPage === 'mypage' ? (
             <MyPage user={user} onLogout={handleLogout} />
+          ) : currentPage === 'discover' ? (
+            <ShopList user={user} />
           ) : (
             <Home 
               user={user} 

@@ -18,14 +18,16 @@ Route::get('/auth/google/callback', [AuthController::class, 'googleCallback']);
 Route::post('/auth/google/login', [AuthController::class, 'googleLogin']);
 Route::post('/auth/logout', [AuthController::class, 'logout']);
 
-// 記録関連のAPI
-Route::post('/records', [RecordController::class, 'store']);
-Route::get('/records', [RecordController::class, 'index']);
-Route::put('/records/{id}', [RecordController::class, 'update']);
-Route::delete('/records/{id}', [RecordController::class, 'destroy']);
-Route::get('/records/shop-names', [RecordController::class, 'getShopNames']);
-Route::get('/records/girl-names', [RecordController::class, 'getGirlNames']);
-
-// お店の種類関連のAPI
-Route::get('/shop-types', [ShopTypeController::class, 'index']);
+// 記録関連のAPI（認証必須）
+Route::middleware([\App\Http\Middleware\AuthenticateUser::class])->group(function () {
+    Route::post('/records', [RecordController::class, 'store']);
+    Route::get('/records', [RecordController::class, 'index']);
+    Route::put('/records/{id}', [RecordController::class, 'update']);
+    Route::delete('/records/{id}', [RecordController::class, 'destroy']);
+    Route::get('/records/shop-names', [RecordController::class, 'getShopNames']);
+    Route::get('/records/girl-names', [RecordController::class, 'getGirlNames']);
+    Route::get('/records/shops', [RecordController::class, 'getShops']);
+    // お店の種類関連のAPI（認証必須：ユーザー別の並び順を適用するため）
+    Route::get('/shop-types', [ShopTypeController::class, 'index']);
+});
 

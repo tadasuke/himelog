@@ -19,6 +19,7 @@ backend/storage/framework/views/*
 *.swp
 *.swo
 *~
+.cursorrules
 
 # OS
 .DS_Store

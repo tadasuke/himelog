@@ -20,7 +20,8 @@ class ShopTypeController extends Controller
     {
         $this->logMethodStart(__FUNCTION__, ['request' => $request], __FILE__, __LINE__);
         try {
-            $userId = $request->query('user_id');
+            // 認証されたユーザーIDを取得（オプション）
+            $userId = $request->input('authenticated_user_id');
             
             // 全てのお店の種類を取得
             $allShopTypes = ShopType::orderBy('display_order', 'asc')
@@ -42,34 +43,35 @@ class ShopTypeController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->first();
             
-            $latestShopType = $latestRecord ? $latestRecord->shop_type : null;
+            // shop_type_idを直接使用（リレーションではなく）
+            $latestShopTypeId = $latestRecord ? $latestRecord->shop_type_id : null;
 
             // ユーザーの記録を種類ごとに集計
             $shopTypeCounts = Record::where('user_id', $userId)
-                ->select('shop_type', DB::raw('count(*) as count'))
-                ->groupBy('shop_type')
+                ->select('shop_type_id', DB::raw('count(*) as count'))
+                ->groupBy('shop_type_id')
                 ->orderBy('count', 'desc')
-                ->pluck('count', 'shop_type')
+                ->pluck('count', 'shop_type_id')
                 ->toArray();
 
             // 並び順を決定
-            $sortedShopTypes = $allShopTypes->sort(function ($a, $b) use ($latestShopType, $shopTypeCounts) {
-                $nameA = $a->name;
-                $nameB = $b->name;
+            $sortedShopTypes = $allShopTypes->sort(function ($a, $b) use ($latestShopTypeId, $shopTypeCounts) {
+                $idA = $a->id;
+                $idB = $b->id;
                 
                 // 最新の記録のお店の種類を最初に
-                if ($latestShopType) {
-                    if ($nameA === $latestShopType && $nameB !== $latestShopType) {
+                if ($latestShopTypeId) {
+                    if ($idA === $latestShopTypeId && $idB !== $latestShopTypeId) {
                         return -1; // Aを前に
                     }
-                    if ($nameA !== $latestShopType && $nameB === $latestShopType) {
+                    if ($idA !== $latestShopTypeId && $idB === $latestShopTypeId) {
                         return 1; // Bを前に
                     }
                 }
                 
                 // 両方とも最新の種類でない場合、合計数の降順で並べる
-                $countA = $shopTypeCounts[$nameA] ?? 0;
-                $countB = $shopTypeCounts[$nameB] ?? 0;
+                $countA = $shopTypeCounts[$idA] ?? 0;
+                $countB = $shopTypeCounts[$idB] ?? 0;
                 
                 if ($countA !== $countB) {
                     return $countB - $countA; // 降順

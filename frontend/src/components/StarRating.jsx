@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types'
 import './StarRating.css'
 
 function StarRating({ rating, onRatingChange, readonly = false }) {
@@ -20,6 +21,12 @@ function StarRating({ rating, onRatingChange, readonly = false }) {
       ))}
     </div>
   )
+}
+
+StarRating.propTypes = {
+  rating: PropTypes.number.isRequired,
+  onRatingChange: PropTypes.func,
+  readonly: PropTypes.bool,
 }
 
 export default StarRating

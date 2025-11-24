@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e86aff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#6f8cff;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- 背景（ダーク） -->
+  <rect width="64" height="64" fill="#0d0f14" rx="12"/>
+  <!-- ヒの文字（グラデーション） -->
+  <text x="32" y="44" font-family="'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif" font-size="36" font-weight="600" fill="url(#gradient)" text-anchor="middle" letter-spacing="0">ヒ</text>
+</svg>
+

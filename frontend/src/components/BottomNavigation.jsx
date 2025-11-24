@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import PropTypes from 'prop-types'
 import './BottomNavigation.css'
 
 function BottomNavigation({ user, currentPage, onNavigate }) {
@@ -14,12 +15,10 @@ function BottomNavigation({ user, currentPage, onNavigate }) {
     },
     {
       id: 'discover',
-      label: 'みつける',
+      label: 'お店',
       icon: (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/>
-          <path d="M12 8L14 12L12 16L10 12L12 8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          <circle cx="12" cy="12" r="2" fill="currentColor"/>
+          <path d="M3 21H21M4 21V7L12 3L20 7V21M4 9H20M9 21V13H15V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       )
     },
@@ -72,6 +71,17 @@ function BottomNavigation({ user, currentPage, onNavigate }) {
       })}
     </nav>
   )
+}
+
+BottomNavigation.propTypes = {
+  user: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string,
+    email: PropTypes.string,
+    avatar: PropTypes.string,
+  }),
+  currentPage: PropTypes.string.isRequired,
+  onNavigate: PropTypes.func,
 }
 
 export default BottomNavigation

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
+import PropTypes from 'prop-types'
 import StarRating from './StarRating'
-import { getApiUrl } from '../utils/api'
+import { getApiUrl, getAuthHeaders, getAuthToken, handleAuthError } from '../utils/api'
 import './RecordForm.css'
 
 function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
@@ -24,7 +25,7 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
   }
 
   const [formData, setFormData] = useState({
-    shopType: editingRecord?.shop_type || '',
+    shopType: editingRecord?.shop_type_id || editingRecord?.shop_type || '',
     shopName: editingRecord?.shop_name || '',
     girlName: editingRecord?.girl_name || '',
     visitDate: editingRecord ? formatDateForInput(editingRecord.visit_date) : getTodayString(),
@@ -50,15 +51,35 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
 
   useEffect(() => {
     const fetchShopTypes = async () => {
+      // 認証トークンがない場合はAPIを呼び出さない
+      const authToken = getAuthToken()
+      if (!authToken) {
+        setIsLoadingShopTypes(false)
+        return
+      }
+
       try {
-        const url = userId 
-          ? getApiUrl(`/api/shop-types?user_id=${encodeURIComponent(userId)}`)
-          : getApiUrl('/api/shop-types')
-        const response = await fetch(url)
+        const url = getApiUrl('/api/shop-types')
+        const response = await fetch(url, getAuthHeaders())
+        
+        // 401エラーの場合は認証エラー処理を実行
+        if (response.status === 401) {
+          handleAuthError(response)
+          return
+        }
+        
         const data = await response.json()
 
         if (response.ok && data.success) {
           setShopTypes(data.shop_types || [])
+          // shopTypesが読み込まれた後、既に選択されているshopTypeがあればお店名を取得
+          if (formData.shopType) {
+            const selectedShopType = (data.shop_types || []).find(st => String(st.id) === String(formData.shopType))
+            if (selectedShopType && selectedShopType.name !== 'その他') {
+              console.log('Shop types loaded, fetching shop names for selected type:', formData.shopType)
+              fetchShopNames(formData.shopType)
+            }
+          }
         } else {
           console.error('Failed to fetch shop types:', data)
         }
@@ -76,12 +97,15 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
   useEffect(() => {
     if (editingRecord && userId) {
       // お店の種類が設定されている場合、お店名を取得
-      if (editingRecord.shop_type && editingRecord.shop_type !== 'その他') {
-        fetchShopNames(editingRecord.shop_type)
+      const shopType = editingRecord.shop_type_id || editingRecord.shop_type
+      const shopTypeName = editingRecord.shop_type
+      if (shopType && shopTypeName !== 'その他') {
+        // shop_type_idが使える場合はそれを使い、なければ名前を使う
+        fetchShopNames(shopType)
       }
       // お店の種類とお店名が設定されている場合、女の子の名前を取得
-      if (editingRecord.shop_type && editingRecord.shop_name) {
-        fetchGirlNames(editingRecord.shop_type, editingRecord.shop_name)
+      if (shopType && editingRecord.shop_name) {
+        fetchGirlNames(shopType, editingRecord.shop_name)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -172,8 +196,17 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
         shopName: '',
         girlName: ''
       }))
-      if (value && value !== 'その他') {
-        fetchShopNames(value)
+      if (value) {
+        // 型の不一致を防ぐため、文字列に変換して比較
+        const selectedShopType = shopTypes.find(st => String(st.id) === String(value))
+        console.log('Shop type selected:', { value, selectedShopType, shopTypes, shopTypesLength: shopTypes.length })
+        if (selectedShopType && selectedShopType.name !== 'その他') {
+          console.log('Fetching shop names for shop type:', value)
+          fetchShopNames(value)
+        } else {
+          console.log('Setting shop names to empty (その他 or not found)', { selectedShopType })
+          setShopNames([])
+        }
       } else {
         setShopNames([])
       }
@@ -181,23 +214,44 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
   }
 
   const fetchShopNames = async (shopType) => {
+    console.log('fetchShopNames called:', { shopType, userId })
     if (!userId || !shopType) {
+      console.log('fetchShopNames: Missing userId or shopType')
+      return
+    }
+
+    // 認証トークンがない場合はAPIを呼び出さない
+    const authToken = getAuthToken()
+    if (!authToken) {
+      console.log('fetchShopNames: No auth token')
       return
     }
 
     setIsLoadingShopNames(true)
     try {
-      const response = await fetch(getApiUrl(`/api/records/shop-names?user_id=${userId}&shop_type=${encodeURIComponent(shopType)}`))
+      const url = getApiUrl(`/api/records/shop-names?shop_type=${encodeURIComponent(shopType)}`)
+      console.log('fetchShopNames: Fetching from URL:', url)
+      const response = await fetch(url, getAuthHeaders())
+      
+      // 401エラーの場合は認証エラー処理を実行
+      if (response.status === 401) {
+        handleAuthError(response)
+        return
+      }
+      
       const data = await response.json()
+      console.log('fetchShopNames: Response:', { status: response.status, data })
 
       if (response.ok && data.success) {
         const shopNamesList = data.shop_names || []
+        console.log('fetchShopNames: Shop names list:', shopNamesList)
         // 編集モードの場合、既存のお店名がリストに含まれていない場合は追加
         if (editingRecord && editingRecord.shop_name && !shopNamesList.includes(editingRecord.shop_name)) {
           shopNamesList.push(editingRecord.shop_name)
         }
         setShopNames(shopNamesList)
         setIsNewShopName(false)
+        console.log('fetchShopNames: Set shopNames to:', shopNamesList)
         // 編集モードでない場合のみお店名をリセット
         if (!editingRecord) {
           setFormData(prev => ({
@@ -229,9 +283,22 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
       return
     }
 
+    // 認証トークンがない場合はAPIを呼び出さない
+    const authToken = getAuthToken()
+    if (!authToken) {
+      return
+    }
+
     setIsLoadingGirlNames(true)
     try {
-      const response = await fetch(getApiUrl(`/api/records/girl-names?user_id=${userId}&shop_type=${encodeURIComponent(shopType)}&shop_name=${encodeURIComponent(shopName)}`))
+      const response = await fetch(getApiUrl(`/api/records/girl-names?shop_type=${encodeURIComponent(shopType)}&shop_name=${encodeURIComponent(shopName)}`), getAuthHeaders())
+      
+      // 401エラーの場合は認証エラー処理を実行
+      if (response.status === 401) {
+        handleAuthError(response)
+        return
+      }
+      
       const data = await response.json()
 
       if (response.ok && data.success) {
@@ -250,7 +317,12 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
           }))
         }
       } else {
-        console.error('Failed to fetch girl names:', data)
+        // エラーの詳細をログに出力
+        console.error('Failed to fetch girl names:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: data
+        })
         setGirlNames([])
       }
     } catch (error) {
@@ -272,6 +344,13 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
+
+    // 認証トークンがない場合は処理を中断
+    const authToken = getAuthToken()
+    if (!authToken) {
+      handleAuthError({ status: 401 })
+      return
+    }
 
     // バリデーション
     if (!formData.visitDate) {
@@ -295,38 +374,28 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
         : getApiUrl('/api/records')
       const method = editingRecord ? 'PUT' : 'POST'
       
-      const requestBody = editingRecord
-        ? {
-            shop_type: formData.shopType,
-            shop_name: formData.shopName,
-            girl_name: formData.girlName.trim() || null,
-            visit_date: formData.visitDate,
-            face_rating: formData.faceRating > 0 ? formData.faceRating : null,
-            style_rating: formData.styleRating > 0 ? formData.styleRating : null,
-            service_rating: formData.serviceRating > 0 ? formData.serviceRating : null,
-            overall_rating: formData.overallRating > 0 ? formData.overallRating : null,
-            review: formData.review || null,
-          }
-        : {
-            user_id: userId,
-            shop_type: formData.shopType,
-            shop_name: formData.shopName,
-            girl_name: formData.girlName.trim() || null,
-            visit_date: formData.visitDate,
-            face_rating: formData.faceRating > 0 ? formData.faceRating : null,
-            style_rating: formData.styleRating > 0 ? formData.styleRating : null,
-            service_rating: formData.serviceRating > 0 ? formData.serviceRating : null,
-            overall_rating: formData.overallRating > 0 ? formData.overallRating : null,
-            review: formData.review || null,
-          }
+      const requestBody = {
+        shop_type_id: formData.shopType,
+        shop_name: formData.shopName,
+        girl_name: formData.girlName.trim() || null,
+        visit_date: formData.visitDate,
+        face_rating: formData.faceRating > 0 ? formData.faceRating : null,
+        style_rating: formData.styleRating > 0 ? formData.styleRating : null,
+        service_rating: formData.serviceRating > 0 ? formData.serviceRating : null,
+        overall_rating: formData.overallRating > 0 ? formData.overallRating : null,
+        review: formData.review || null,
+      }
 
-      const response = await fetch(url, {
+      const response = await fetch(url, getAuthHeaders({
         method: method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(requestBody),
-      })
+      }))
+
+      // 401エラーの場合は認証エラー処理を実行
+      if (response.status === 401) {
+        handleAuthError(response)
+        return
+      }
 
       const data = await response.json()
 
@@ -411,7 +480,7 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
           >
             <option value="">選択してください</option>
             {shopTypes.map((shopType) => (
-              <option key={shopType.id} value={shopType.name}>
+              <option key={shopType.id} value={shopType.id}>
                 {shopType.name}
               </option>
             ))}
@@ -422,7 +491,20 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
           <label htmlFor="shopName" className="form-label">
             お店の名前 <span className="required">*</span>
           </label>
-          {formData.shopType === 'その他' ? (
+          {(() => {
+            // 型の不一致を防ぐため、文字列に変換して比較
+            const selectedShopType = shopTypes.find(st => String(st.id) === String(formData.shopType))
+            const isOtherShopType = selectedShopType && selectedShopType.name === 'その他'
+            console.log('Shop name field render:', { 
+              shopType: formData.shopType, 
+              selectedShopType, 
+              isOtherShopType, 
+              shopNames, 
+              shopNamesLength: shopNames.length, 
+              isNewShopName, 
+              isLoadingShopNames 
+            })
+            return isOtherShopType ? (
             <input
               type="text"
               id="shopName"
@@ -461,7 +543,8 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
               placeholder={isLoadingShopNames ? '読み込み中...' : 'お店の名前を入力'}
               disabled={isSubmitting || isLoadingShopNames}
             />
-          )}
+            )
+          })()}
         </div>
 
         <div className="form-group">
@@ -575,6 +658,25 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
       </form>
     </div>
   )
+}
+
+RecordForm.propTypes = {
+  userId: PropTypes.string.isRequired,
+  onRecordAdded: PropTypes.func.isRequired,
+  editingRecord: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    shop_type_id: PropTypes.string,
+    shop_type: PropTypes.string,
+    shop_name: PropTypes.string,
+    girl_name: PropTypes.string,
+    visit_date: PropTypes.string,
+    face_rating: PropTypes.number,
+    style_rating: PropTypes.number,
+    service_rating: PropTypes.number,
+    overall_rating: PropTypes.number,
+    review: PropTypes.string,
+  }),
+  onCancelEdit: PropTypes.func,
 }
 
 export default RecordForm

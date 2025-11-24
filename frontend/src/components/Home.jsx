@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
+import PropTypes from 'prop-types'
 import './Home.css'
 import RecordForm from './RecordForm'
 import StarRating from './StarRating'
-import { getApiUrl } from '../utils/api'
+import { getApiUrl, getAuthHeaders, getAuthToken, handleAuthError } from '../utils/api'
 
 function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded }) {
   const [records, setRecords] = useState([])
@@ -16,11 +17,25 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded }) {
   const fetchRecords = async () => {
     if (!user?.id) return
 
+    // 認証トークンがない場合はAPIを呼び出さない
+    const authToken = getAuthToken()
+    if (!authToken) {
+      console.warn('No auth token, skipping API call')
+      return
+    }
+
     setIsLoading(true)
     setError(null)
 
     try {
-      const response = await fetch(getApiUrl(`/api/records?user_id=${user.id}`))
+      const response = await fetch(getApiUrl('/api/records'), getAuthHeaders())
+      
+      // 401エラーの場合は認証エラー処理を実行
+      if (response.status === 401) {
+        handleAuthError(response)
+        return
+      }
+      
       const data = await response.json()
 
       if (!response.ok) {
@@ -79,13 +94,26 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded }) {
   const handleConfirmDelete = async () => {
     if (!deleteConfirmRecord) return
 
+    // 認証トークンがない場合は処理を中断
+    const authToken = getAuthToken()
+    if (!authToken) {
+      handleAuthError({ status: 401 })
+      return
+    }
+
     setIsDeleting(true)
     setError(null)
 
     try {
-      const response = await fetch(getApiUrl(`/api/records/${deleteConfirmRecord.id}`), {
+      const response = await fetch(getApiUrl(`/api/records/${deleteConfirmRecord.id}`), getAuthHeaders({
         method: 'DELETE',
-      })
+      }))
+
+      // 401エラーの場合は認証エラー処理を実行
+      if (response.status === 401) {
+        handleAuthError(response)
+        return
+      }
 
       const data = await response.json()
 
@@ -195,7 +223,11 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded }) {
                 <div key={record.id} className="log-card">
                   <div className="log-card-header">
                     <div className="log-card-shop">
-                      <span className="log-card-shop-type">{record.shop_type}</span>
+                      <span className="log-card-shop-type">
+                        {typeof record.shop_type === 'string' 
+                          ? record.shop_type 
+                          : record.shop_type?.name || record.shop_type_id || ''}
+                      </span>
                       <span className="log-card-shop-name">{record.shop_name}</span>
                     </div>
                     <span className="log-card-date">
@@ -283,6 +315,19 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded }) {
       )}
     </div>
   )
+}
+
+Home.propTypes = {
+  user: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string,
+    email: PropTypes.string,
+    avatar: PropTypes.string,
+  }),
+  onLogout: PropTypes.func,
+  currentPage: PropTypes.string.isRequired,
+  onRecordAdded: PropTypes.func,
+  onRecordsLoaded: PropTypes.func,
 }
 
 export default Home

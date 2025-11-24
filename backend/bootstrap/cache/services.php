@@ -29,6 +29,7 @@
     25 => 'Termwind\\Laravel\\TermwindServiceProvider',
     26 => 'App\\Providers\\LoggingServiceProvider',
     27 => 'App\\Providers\\ConfigCacheServiceProvider',
+    28 => 'App\\Providers\\DatabaseConnectionServiceProvider',
   ),
   'eager' => 
   array (
@@ -46,6 +47,7 @@
     11 => 'Termwind\\Laravel\\TermwindServiceProvider',
     12 => 'App\\Providers\\LoggingServiceProvider',
     13 => 'App\\Providers\\ConfigCacheServiceProvider',
+    14 => 'App\\Providers\\DatabaseConnectionServiceProvider',
   ),
   'deferred' => 
   array (

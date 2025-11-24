@@ -89,3 +89,4 @@ class ConfigCacheServiceProvider extends EventServiceProvider
     }
 }
 
+
