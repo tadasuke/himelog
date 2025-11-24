@@ -45,15 +45,6 @@ class DatabaseConnectionServiceProvider extends ServiceProvider
             $this->throwSqliteNotAllowedException('Default database connection is set to SQLite in configuration.');
         }
 
-        // SQLiteファイルが存在しないことを確認
-        $sqlitePath = database_path('database.sqlite');
-        if (file_exists($sqlitePath)) {
-            Log::error('SQLite database file detected', [
-                'path' => $sqlitePath,
-            ]);
-            $this->throwSqliteNotAllowedException("SQLite database file exists at: {$sqlitePath}");
-        }
-
         // データベース接続が既に確立されている場合は、SQLite接続でないことを確認
         try {
             if (app()->bound('db')) {
@@ -67,6 +58,9 @@ class DatabaseConnectionServiceProvider extends ServiceProvider
         } catch (\Exception $e) {
             // 接続エラーの場合は無視（後でコマンド実行時にチェックされる）
         }
+        
+        // SQLiteファイルの存在チェックは、データベース接続を実際に使用するコマンド実行時にのみ行う
+        // （アプリケーション起動時やconfig:clearなどのコマンドではスキップ）
     }
 
     /**
@@ -74,12 +68,38 @@ class DatabaseConnectionServiceProvider extends ServiceProvider
      */
     private function checkSqliteConnectionBeforeCommand(?string $command): void
     {
+        // データベース接続を必要としないコマンドはスキップ
+        $skipCommands = ['config:clear', 'config:cache', 'route:clear', 'view:clear', 'cache:clear', 'key:generate'];
+        
+        if ($command !== null && in_array($command, $skipCommands)) {
+            // ただし、SQLiteファイルが存在する場合は警告を出す（エラーにはしない）
+            $sqlitePath = database_path('database.sqlite');
+            if (file_exists($sqlitePath)) {
+                Log::warning('SQLite database file detected (command: ' . $command . ')', [
+                    'path' => $sqlitePath,
+                    'command' => $command,
+                ]);
+                // このコマンドではデータベース接続を使わないので、ファイルの存在チェックはスキップ
+                return;
+            }
+            return;
+        }
+
         // 設定でSQLiteが指定されていないことを確認
         $defaultConnection = config('database.default', env('DB_CONNECTION', 'mysql'));
         
         if ($defaultConnection === 'sqlite') {
             $this->throwSqliteNotAllowedException(
                 "Command '{$command}' attempted with SQLite as default connection. SQLite is not allowed."
+            );
+        }
+
+        // SQLiteファイルが存在する場合はエラー（データベース接続を必要とするコマンドの場合）
+        $sqlitePath = database_path('database.sqlite');
+        if (file_exists($sqlitePath)) {
+            $this->throwSqliteNotAllowedException(
+                "SQLite database file exists at: {$sqlitePath}. SQLite is not allowed. " .
+                "Please delete this file immediately."
             );
         }
 
@@ -94,13 +114,7 @@ class DatabaseConnectionServiceProvider extends ServiceProvider
                 );
             }
         } catch (\Exception $e) {
-            // 接続エラーの場合は、SQLiteファイルが存在しないことを確認
-            $sqlitePath = database_path('database.sqlite');
-            if (file_exists($sqlitePath)) {
-                $this->throwSqliteNotAllowedException(
-                    "SQLite database file exists at: {$sqlitePath}. SQLite is not allowed."
-                );
-            }
+            // 接続エラーの場合は既にSQLiteファイルの存在チェックは完了している
         }
     }
 
