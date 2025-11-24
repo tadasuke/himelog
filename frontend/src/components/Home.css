@@ -136,7 +136,6 @@
   border-radius: 16px;
   padding: 20px;
   border: 1px solid rgba(232, 106, 255, 0.15);
-  transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
@@ -154,16 +153,6 @@
   transition: opacity 0.3s ease;
 }
 
-.log-card:active {
-  border-color: rgba(232, 106, 255, 0.3);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3),
-              0 0 0 1px rgba(232, 106, 255, 0.2);
-  transform: scale(0.98);
-}
-
-.log-card:active::before {
-  opacity: 1;
-}
 
 .log-card-header {
   display: flex;
@@ -184,19 +173,19 @@
 
 .log-card-title.clickable {
   cursor: pointer;
-  color: #6f8cff;
+  color: #e86aff;
   transition: color 0.3s ease;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-}
-
-.log-card-title.clickable:hover {
-  color: #e86aff;
   text-decoration: underline;
 }
 
+.log-card-title.clickable:hover {
+  color: #ff8aff;
+}
+
 .log-card-title.clickable:active {
-  color: #e86aff;
+  color: #ff8aff;
   opacity: 0.8;
 }
 
@@ -237,19 +226,19 @@
 
 .log-card-shop-name.clickable {
   cursor: pointer;
-  color: #6f8cff;
+  color: #e86aff;
   transition: color 0.3s ease;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-}
-
-.log-card-shop-name.clickable:hover {
-  color: #e86aff;
   text-decoration: underline;
 }
 
+.log-card-shop-name.clickable:hover {
+  color: #ff8aff;
+}
+
 .log-card-shop-name.clickable:active {
-  color: #e86aff;
+  color: #ff8aff;
   opacity: 0.8;
 }
 
@@ -321,7 +310,7 @@
 }
 
 .log-card-preview {
-  font-size: 13px;
+  font-size: 15px;
   color: #a0a0a0;
   line-height: 1.6;
   margin-bottom: 16px;
@@ -552,21 +541,6 @@
     border-radius: 12px;
   }
 
-  .log-card:hover {
-    border-color: rgba(232, 106, 255, 0.3);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3),
-                0 0 0 1px rgba(232, 106, 255, 0.2);
-    transform: translateY(-2px);
-  }
-
-  .log-card:hover::before {
-    opacity: 1;
-  }
-
-  .log-card:active {
-    transform: scale(0.98);
-  }
-
   .log-card-header {
     margin-bottom: 16px;
   }
@@ -616,7 +590,7 @@
   }
 
   .log-card-preview {
-    font-size: 14px;
+    font-size: 16px;
     margin-bottom: 20px;
     display: block;
     -webkit-line-clamp: unset;

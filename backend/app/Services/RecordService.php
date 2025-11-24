@@ -174,21 +174,41 @@ class RecordService
 
     /**
      * ユーザーが登録した全お店の一覧を取得（shop_typeごとにグループ化）
+     * 各お店について利用回数と総合評価の平均を含める
      */
     public function getShops(string $userId): array
     {
-        $shops = Record::where('user_id', $userId)
+        $records = Record::where('user_id', $userId)
             ->with('shopType')
-            ->select('shop_type_id', 'shop_name')
-            ->distinct()
-            ->get()
+            ->get();
+
+        $shops = $records
             ->groupBy(function ($record) {
                 return $record->shop_type; // アクセサで取得したshop_type（名前）でグループ化
             })
-            ->map(function ($group) {
-                return $group->pluck('shop_name')
-                    ->unique()
-                    ->sort()
+            ->map(function ($group) use ($userId) {
+                return $group
+                    ->groupBy('shop_name')
+                    ->map(function ($shopRecords) {
+                        $visitCount = $shopRecords->count();
+                        $ratings = $shopRecords
+                            ->pluck('overall_rating')
+                            ->filter(function ($rating) {
+                                return $rating !== null && $rating > 0;
+                            });
+                        
+                        $averageRating = $ratings->count() > 0 
+                            ? round($ratings->avg(), 1) 
+                            : 0;
+
+                        return [
+                            'name' => $shopRecords->first()->shop_name,
+                            'visit_count' => $visitCount,
+                            'average_rating' => $averageRating,
+                        ];
+                    })
+                    ->values()
+                    ->sortBy('name')
                     ->values()
                     ->toArray();
             })

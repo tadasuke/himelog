@@ -65,10 +65,26 @@ function App() {
     script.src = 'https://accounts.google.com/gsi/client'
     script.async = true
     script.defer = true
+    
+    // エラーハンドリング
+    script.onerror = () => {
+      console.error('Failed to load Google Identity Services script')
+      console.error('403エラーが発生している可能性があります。以下を確認してください:')
+      console.error('1. Google Cloud Consoleで「承認済みのJavaScript生成元」に現在のドメインが追加されているか')
+      console.error('2. 現在のURL:', window.location.origin)
+      console.error('3. OAuth同意画面が正しく設定されているか')
+    }
+    
+    script.onload = () => {
+      console.log('Google Identity Services script loaded successfully')
+    }
+    
     document.body.appendChild(script)
 
     return () => {
-      document.body.removeChild(script)
+      if (document.body.contains(script)) {
+        document.body.removeChild(script)
+      }
     }
   }, [])
 
@@ -190,10 +206,14 @@ function App() {
     setSelectedShop({ shopType, shopName })
     // お店詳細画面に遷移する際は、ヒメ詳細画面を閉じる
     setSelectedGirl(null)
+    // お店詳細画面を表示する際は、お店メニューをアクティブにする
+    setCurrentPage('discover')
   }
 
   const handleGirlClick = (girlName) => {
     setSelectedGirl(girlName)
+    // ヒメ詳細画面を表示する際は、ヒメメニューをアクティブにする
+    setCurrentPage('girls')
   }
 
   const handleGirlDetailBack = () => {
@@ -217,7 +237,6 @@ function App() {
             <GirlDetail 
               user={user}
               girlName={selectedGirl}
-              onBack={handleGirlDetailBack}
               onShopClick={handleShopClick}
             />
           ) : currentPage === 'mypage' ? (

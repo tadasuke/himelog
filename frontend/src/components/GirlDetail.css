@@ -249,15 +249,21 @@
 }
 
 .log-card-shop-name.clickable {
-  color: #6f8cff;
+  color: #e86aff;
   cursor: pointer;
   transition: color 0.3s ease;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  text-decoration: underline;
+}
+
+.log-card-shop-name.clickable:hover {
+  color: #ff8aff;
 }
 
 .log-card-shop-name.clickable:active {
-  color: #e86aff;
+  color: #ff8aff;
+  opacity: 0.8;
 }
 
 .log-card-ratings {
@@ -323,7 +329,7 @@
 }
 
 .log-card-preview {
-  font-size: 13px;
+  font-size: 15px;
   color: #a0a0a0;
   line-height: 1.6;
   margin-bottom: 16px;
@@ -561,11 +567,11 @@
   }
 
   .log-card-shop-name.clickable:hover {
-    color: #e86aff;
+    color: #ff8aff;
   }
 
   .log-card-preview {
-    font-size: 14px;
+    font-size: 16px;
     margin-bottom: 20px;
     display: block;
     -webkit-line-clamp: unset;
@@ -599,6 +605,112 @@
   border-radius: 16px;
   padding: 20px;
   border: 1px solid rgba(232, 106, 255, 0.15);
+}
+
+.girl-detail-shops-section {
+  margin-bottom: 32px;
+  background-color: #161a22;
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid rgba(232, 106, 255, 0.15);
+}
+
+.girl-detail-shops-title {
+  font-size: 18px;
+  font-weight: 500;
+  color: #e8e8e8;
+  letter-spacing: 0.2px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(232, 106, 255, 0.1);
+}
+
+.girl-detail-shops-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.girl-detail-shop-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(111, 140, 255, 0.08);
+  border-radius: 8px;
+  border: 1px solid rgba(111, 140, 255, 0.2);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.girl-detail-shop-item:active {
+  transform: scale(0.98);
+  background: rgba(111, 140, 255, 0.12);
+  border-color: rgba(111, 140, 255, 0.3);
+}
+
+.girl-detail-shop-item-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.girl-detail-shop-type {
+  font-size: 12px;
+  color: #6f8cff;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+}
+
+.girl-detail-shop-name {
+  font-size: 14px;
+  color: #e8e8e8;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+}
+
+.girl-detail-shop-item-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(111, 140, 255, 0.1);
+}
+
+.girl-detail-shop-item-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.girl-detail-shop-item-stat-label {
+  font-size: 12px;
+  color: #6f8cff;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+}
+
+.girl-detail-shop-item-stat-value {
+  font-size: 14px;
+  color: #e8e8e8;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+}
+
+.girl-detail-shop-item-rating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.girl-detail-shop-item-rating-value {
+  font-size: 14px;
+  color: #ffd700;
+  font-weight: 600;
+  letter-spacing: 0.1px;
 }
 
 .girl-detail-info-header {
@@ -900,6 +1012,67 @@
   .girl-detail-url-add-btn:hover {
     background: rgba(111, 140, 255, 0.1);
     border-color: rgba(111, 140, 255, 0.5);
+  }
+
+  .girl-detail-shops-section {
+    padding: 24px;
+    border-radius: 12px;
+  }
+
+  .girl-detail-shops-title {
+    font-size: 20px;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+  }
+
+  .girl-detail-shops-list {
+    gap: 16px;
+  }
+
+  .girl-detail-shop-item {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .girl-detail-shop-item-header {
+    gap: 6px;
+  }
+
+  .girl-detail-shop-item-stats {
+    flex-direction: row;
+    gap: 24px;
+    padding-top: 12px;
+  }
+
+  .girl-detail-shop-item-stat {
+    flex: 1;
+  }
+
+  .girl-detail-shop-item-stat-label {
+    font-size: 13px;
+  }
+
+  .girl-detail-shop-item-stat-value {
+    font-size: 15px;
+  }
+
+  .girl-detail-shop-item-rating-value {
+    font-size: 15px;
+  }
+
+  .girl-detail-shop-item:hover {
+    background: rgba(111, 140, 255, 0.12);
+    border-color: rgba(111, 140, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .girl-detail-shop-type {
+    font-size: 13px;
+  }
+
+  .girl-detail-shop-name {
+    font-size: 15px;
   }
 }
 

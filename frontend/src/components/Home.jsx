@@ -216,7 +216,9 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
           <div className="empty-message">まだ記録がありません。新しい記録を登録してください。</div>
         )}
         {!isLoading && !error && records.length > 0 && (
-          <div className="logs-grid">
+          <>
+            <h2 className="logs-section-title">最近の出会い</h2>
+            <div className="logs-grid">
             {records.map((record) => {
               const isExpanded = expandedCards.has(record.id)
               return (
@@ -248,15 +250,7 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
                     </span>
                   </div>
                   <div className="log-card-info">
-                    <h3 
-                      className="log-card-title clickable"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (onGirlClick && record.girl_name) {
-                          onGirlClick(record.girl_name)
-                        }
-                      }}
-                    >
+                    <h3 className="log-card-title">
                       {record.girl_name}
                     </h3>
                   </div>
@@ -344,7 +338,8 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
                 </div>
               )
             })}
-          </div>
+            </div>
+          </>
         )}
       </div>
       )}

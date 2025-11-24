@@ -5,7 +5,7 @@ import StarRating from './StarRating'
 import RecordForm from './RecordForm'
 import { getApiUrl, getAuthHeaders, getAuthToken, handleAuthError } from '../utils/api'
 
-function GirlDetail({ user, girlName, onBack, onShopClick }) {
+function GirlDetail({ user, girlName, onShopClick }) {
   const [records, setRecords] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -268,6 +268,51 @@ function GirlDetail({ user, girlName, onBack, onShopClick }) {
     return records.length
   }, [records])
 
+  // ヒメが所属しているお店の情報を集約（利用回数と総合評価の平均を含む）
+  const shops = useMemo(() => {
+    if (!records || records.length === 0) return []
+    
+    const shopMap = new Map()
+    records.forEach(record => {
+      if (record.shop_name && record.shop_type) {
+        const shopType = typeof record.shop_type === 'string' 
+          ? record.shop_type 
+          : record.shop_type?.name || record.shop_type_id || ''
+        const key = `${shopType}_${record.shop_name}`
+        
+        if (!shopMap.has(key)) {
+          shopMap.set(key, {
+            shop_type: shopType,
+            shop_name: record.shop_name,
+            records: []
+          })
+        }
+        
+        // このお店のレビューを追加
+        shopMap.get(key).records.push(record)
+      }
+    })
+    
+    // 各お店について利用回数と総合評価の平均を計算
+    return Array.from(shopMap.values()).map(shop => {
+      const visitCount = shop.records.length
+      const ratings = shop.records
+        .map(record => record.overall_rating)
+        .filter(rating => rating !== null && rating !== undefined && rating > 0)
+      
+      const averageRating = ratings.length > 0
+        ? Math.round((ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length) * 10) / 10
+        : 0
+      
+      return {
+        shop_type: shop.shop_type,
+        shop_name: shop.shop_name,
+        visit_count: visitCount,
+        average_rating: averageRating,
+      }
+    })
+  }, [records])
+
   return (
     <div className="girl-detail-container">
       {user && editingRecord && (
@@ -281,15 +326,6 @@ function GirlDetail({ user, girlName, onBack, onShopClick }) {
       {!editingRecord && (
         <>
       <div className="girl-detail-header">
-        <button 
-          className="girl-detail-back-btn"
-          onClick={onBack}
-          aria-label="戻る"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
         <div className="girl-detail-title-section">
           <h2 className="girl-detail-title">{girlName}</h2>
           {records.length > 0 && (
@@ -459,6 +495,47 @@ function GirlDetail({ user, girlName, onBack, onShopClick }) {
         )}
       </div>
 
+      {/* お店情報セクション */}
+      {shops.length > 0 && (
+        <div className="girl-detail-shops-section">
+          <h3 className="girl-detail-shops-title">所属しているお店</h3>
+          <div className="girl-detail-shops-list">
+            {shops.map((shop, index) => (
+              <div 
+                key={index} 
+                className="girl-detail-shop-item"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (onShopClick && shop.shop_name) {
+                    onShopClick(shop.shop_type, shop.shop_name)
+                  }
+                }}
+              >
+                <div className="girl-detail-shop-item-header">
+                  <span className="girl-detail-shop-type">{shop.shop_type}</span>
+                  <span className="girl-detail-shop-name">{shop.shop_name}</span>
+                </div>
+                <div className="girl-detail-shop-item-stats">
+                  <div className="girl-detail-shop-item-stat">
+                    <span className="girl-detail-shop-item-stat-label">利用回数</span>
+                    <span className="girl-detail-shop-item-stat-value">{shop.visit_count}回</span>
+                  </div>
+                  {shop.average_rating > 0 && (
+                    <div className="girl-detail-shop-item-stat">
+                      <span className="girl-detail-shop-item-stat-label">平均評価</span>
+                      <div className="girl-detail-shop-item-rating">
+                        <StarRating rating={shop.average_rating} readonly={true} />
+                        <span className="girl-detail-shop-item-rating-value">{shop.average_rating}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 記録一覧セクション */}
       {!isLoading && !error && records.length === 0 && (
         <div className="empty-message">このヒメの記録はまだありません。</div>
@@ -474,27 +551,6 @@ function GirlDetail({ user, girlName, onBack, onShopClick }) {
               return (
                 <div key={record.id} className="log-card">
                   <div className="log-card-header">
-                    <div className="log-card-shop">
-                      <span className="log-card-shop-type">
-                        {typeof record.shop_type === 'string' 
-                          ? record.shop_type 
-                          : record.shop_type?.name || record.shop_type_id || ''}
-                      </span>
-                      <span 
-                        className="log-card-shop-name clickable"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (onShopClick && record.shop_name) {
-                            const shopType = typeof record.shop_type === 'string' 
-                              ? record.shop_type 
-                              : record.shop_type?.name || record.shop_type_id || ''
-                            onShopClick(shopType, record.shop_name)
-                          }
-                        }}
-                      >
-                        {record.shop_name}
-                      </span>
-                    </div>
                     <span className="log-card-date">
                       {record.visit_date ? formatDate(record.visit_date) : formatDate(record.created_at)}
                     </span>
@@ -591,7 +647,6 @@ GirlDetail.propTypes = {
     avatar: PropTypes.string,
   }),
   girlName: PropTypes.string.isRequired,
-  onBack: PropTypes.func.isRequired,
   onShopClick: PropTypes.func,
 }
 

@@ -322,7 +322,7 @@
 }
 
 .log-card-preview {
-  font-size: 13px;
+  font-size: 15px;
   color: #a0a0a0;
   line-height: 1.6;
   margin-bottom: 16px;
@@ -559,7 +559,7 @@
   }
 
   .log-card-preview {
-    font-size: 14px;
+    font-size: 16px;
     margin-bottom: 20px;
     display: block;
     -webkit-line-clamp: unset;

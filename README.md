@@ -143,12 +143,36 @@ php artisan serve
 - `http://localhost:5173`
 - `http://127.0.0.1:5173`
 
-**注意**: この設定がないと「no registered origin」エラーが発生します。
+**注意**: この設定がないと「no registered origin」エラーや403エラーが発生します。
 
 #### 承認済みのリダイレクト URI
 以下のURIを追加してください：
 - `http://localhost:8000/api/auth/google/callback`
 - `http://localhost:5173` (開発環境用)
+
+### 2-1. 403エラーの解決方法
+
+Googleログインボタンで403エラーが発生する場合、以下の手順を確認してください：
+
+1. **Google Cloud Consoleで「承認済みのJavaScript生成元」を確認**
+   - [Google Cloud Console](https://console.cloud.google.com/) → 「APIとサービス」→「認証情報」
+   - OAuth 2.0 クライアント IDを選択
+   - 「承認済みのJavaScript生成元」に現在のドメインが追加されているか確認
+   - 開発環境の場合: `http://localhost:5173` と `http://127.0.0.1:5173` を追加
+   - 本番環境の場合: 実際のドメイン（例: `https://yourdomain.com`）を追加
+
+2. **OAuth同意画面の設定を確認**
+   - 「OAuth同意画面」でアプリケーション情報が正しく設定されているか確認
+   - テストユーザーが追加されているか確認（テストモードの場合）
+
+3. **ブラウザのキャッシュとCookieをクリア**
+   - ブラウザのキャッシュとCookieを削除して再試行
+
+4. **複数のGoogleアカウントにログインしている場合**
+   - すべてのGoogleアカウントからログアウトし、再度目的のアカウントでログイン
+
+5. **ブラウザのコンソールでエラー詳細を確認**
+   - 開発者ツール（F12）を開き、コンソールタブでエラーメッセージを確認
 
 ### 3. 環境変数の設定
 

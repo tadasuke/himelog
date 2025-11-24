@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import './ShopList.css'
+import StarRating from './StarRating'
 import { getApiUrl, getAuthHeaders, getAuthToken, handleAuthError } from '../utils/api'
 
 function ShopList({ user, onShopClick }) {
@@ -69,15 +70,38 @@ function ShopList({ user, onShopClick }) {
             <div key={shopType} className="shop-type-group">
               <h3 className="shop-type-title">{shopType}</h3>
               <ul className="shop-name-list">
-                {shops[shopType].map((shopName, index) => (
-                  <li 
-                    key={index} 
-                    className="shop-name-item"
-                    onClick={() => onShopClick && onShopClick(shopType, shopName)}
-                  >
-                    {shopName}
-                  </li>
-                ))}
+                {shops[shopType].map((shop, index) => {
+                  const shopName = typeof shop === 'string' ? shop : shop.name
+                  const visitCount = typeof shop === 'object' ? shop.visit_count : 0
+                  const averageRating = typeof shop === 'object' ? shop.average_rating : 0
+                  
+                  return (
+                    <li 
+                      key={index} 
+                      className="shop-name-item"
+                      onClick={() => onShopClick && onShopClick(shopType, shopName)}
+                    >
+                      <div className="shop-name-item-header">
+                        <span className="shop-name-item-name">{shopName}</span>
+                      </div>
+                      <div className="shop-name-item-stats">
+                        <div className="shop-name-item-stat">
+                          <span className="shop-name-item-stat-label">利用回数</span>
+                          <span className="shop-name-item-stat-value">{visitCount}回</span>
+                        </div>
+                        {averageRating > 0 && (
+                          <div className="shop-name-item-stat">
+                            <span className="shop-name-item-stat-label">平均評価</span>
+                            <div className="shop-name-item-rating">
+                              <StarRating rating={averageRating} readonly={true} />
+                              <span className="shop-name-item-rating-value">{averageRating}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           ))}

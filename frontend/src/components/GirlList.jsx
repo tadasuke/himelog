@@ -74,21 +74,21 @@ function GirlList({ user, onShopClick, onGirlClick }) {
           <div className="logs-grid">
             {girls.map((girl) => {
               return (
-                <div key={girl.girl_name} className="log-card">
+                <div 
+                  key={girl.girl_name} 
+                  className="log-card clickable"
+                  onClick={() => {
+                    if (onGirlClick && girl.girl_name) {
+                      onGirlClick(girl.girl_name)
+                    }
+                  }}
+                >
                   <div className="log-card-header">
                     <div className="log-card-shop">
                       <span className="log-card-shop-type">
                         {girl.shop_type || ''}
                       </span>
-                      <span 
-                        className="log-card-shop-name clickable"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (onShopClick) {
-                            onShopClick(girl.shop_type, girl.shop_name)
-                          }
-                        }}
-                      >
+                      <span className="log-card-shop-name">
                         {girl.shop_name}
                       </span>
                     </div>
@@ -97,15 +97,7 @@ function GirlList({ user, onShopClick, onGirlClick }) {
                     </span>
                   </div>
                   <div className="log-card-info">
-                    <h3 
-                      className="log-card-title clickable"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (onGirlClick && girl.girl_name) {
-                          onGirlClick(girl.girl_name)
-                        }
-                      }}
-                    >
+                    <h3 className="log-card-title">
                       {girl.girl_name}
                     </h3>
                   </div>

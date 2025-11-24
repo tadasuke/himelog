@@ -28,6 +28,10 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+.log-card.clickable {
+  cursor: pointer;
+}
+
 .log-card::before {
   content: '';
   position: absolute;
@@ -123,19 +127,19 @@
 
 .log-card-shop-name.clickable {
   cursor: pointer;
-  color: #6f8cff;
+  color: #e86aff;
   transition: color 0.3s ease;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-}
-
-.log-card-shop-name.clickable:hover {
-  color: #e86aff;
   text-decoration: underline;
 }
 
+.log-card-shop-name.clickable:hover {
+  color: #ff8aff;
+}
+
 .log-card-shop-name.clickable:active {
-  color: #e86aff;
+  color: #ff8aff;
   opacity: 0.8;
 }
 
@@ -320,14 +324,14 @@
     border-radius: 12px;
   }
 
-  .log-card:hover {
+  .log-card.clickable:hover {
     border-color: rgba(232, 106, 255, 0.3);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3),
                 0 0 0 1px rgba(232, 106, 255, 0.2);
     transform: translateY(-2px);
   }
 
-  .log-card:hover::before {
+  .log-card.clickable:hover::before {
     opacity: 1;
   }
 
