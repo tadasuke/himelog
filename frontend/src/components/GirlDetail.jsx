@@ -15,6 +15,9 @@ function GirlDetail({ user, girlName, onShopClick }) {
   const [isEditing, setIsEditing] = useState(false)
   const [memo, setMemo] = useState('')
   const [urls, setUrls] = useState([''])
+  const [imageUrls, setImageUrls] = useState([''])
+  const [validImageUrls, setValidImageUrls] = useState([])
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isSaving, setIsSaving] = useState(false)
   const [editingRecord, setEditingRecord] = useState(null)
 
@@ -105,10 +108,19 @@ function GirlDetail({ user, girlName, onShopClick }) {
         setUrls(data.girl.girl_urls && data.girl.girl_urls.length > 0 
           ? data.girl.girl_urls.map(url => url.url)
           : [''])
+        const imageUrlsList = data.girl.girl_image_urls && data.girl.girl_image_urls.length > 0
+          ? data.girl.girl_image_urls.map(img => img.image_url)
+          : []
+        setImageUrls(imageUrlsList.length > 0 ? imageUrlsList : [''])
+        setValidImageUrls([])
+        setCurrentImageIndex(0)
       } else {
         setGirl(null)
         setMemo('')
         setUrls([''])
+        setImageUrls([''])
+        setValidImageUrls([])
+        setCurrentImageIndex(0)
       }
     } catch (error) {
       console.error('Fetch girl error:', error)
@@ -122,6 +134,34 @@ function GirlDetail({ user, girlName, onShopClick }) {
     fetchGirlRecords()
     fetchGirl()
   }, [user?.id, girlName])
+
+  // 画像URLが変更されたときに、有効な画像を検証
+  useEffect(() => {
+    if (!isEditing && girl?.girl_image_urls) {
+      const imageUrlsList = girl.girl_image_urls.map(img => img.image_url)
+      setValidImageUrls([])
+      setCurrentImageIndex(0)
+      
+      // 各画像URLの読み込みを試みる
+      imageUrlsList.forEach(imageUrl => {
+        if (imageUrl) {
+          const img = new Image()
+          img.onload = () => {
+            setValidImageUrls(prev => {
+              if (!prev.includes(imageUrl)) {
+                return [...prev, imageUrl]
+              }
+              return prev
+            })
+          }
+          img.onerror = () => {
+            // エラーの場合は何もしない（スライドショーに含めない）
+          }
+          img.src = imageUrl
+        }
+      })
+    }
+  }, [girl?.girl_image_urls, isEditing])
 
   const formatDate = (dateString) => {
     const date = new Date(dateString)
@@ -180,6 +220,45 @@ function GirlDetail({ user, girlName, onShopClick }) {
     setUrls(newUrls)
   }
 
+  const handleAddImageUrl = () => {
+    setImageUrls([...imageUrls, ''])
+  }
+
+  const handleRemoveImageUrl = (index) => {
+    if (imageUrls.length > 1) {
+      setImageUrls(imageUrls.filter((_, i) => i !== index))
+    } else {
+      setImageUrls([''])
+    }
+  }
+
+  const handleImageUrlChange = (index, value) => {
+    const newImageUrls = [...imageUrls]
+    newImageUrls[index] = value
+    setImageUrls(newImageUrls)
+  }
+
+  const handleImageLoad = (imageUrl) => {
+    setValidImageUrls(prev => {
+      if (!prev.includes(imageUrl)) {
+        return [...prev, imageUrl]
+      }
+      return prev
+    })
+  }
+
+  const handleImageError = (imageUrl) => {
+    setValidImageUrls(prev => prev.filter(url => url !== imageUrl))
+  }
+
+  const handleNextImage = () => {
+    setCurrentImageIndex(prev => (prev + 1) % validImageUrls.length)
+  }
+
+  const handlePrevImage = () => {
+    setCurrentImageIndex(prev => (prev - 1 + validImageUrls.length) % validImageUrls.length)
+  }
+
   const handleSave = async () => {
     if (!user?.id || !girlName) return
 
@@ -201,6 +280,7 @@ function GirlDetail({ user, girlName, onShopClick }) {
             girl_name: girlName,
             memo: memo.trim() || null,
             urls: urls.filter(url => url.trim()),
+            image_urls: imageUrls.filter(url => url.trim()),
           }),
         })
       )
@@ -217,6 +297,12 @@ function GirlDetail({ user, girlName, onShopClick }) {
       }
 
       setGirl(data.girl)
+      const imageUrlsList = data.girl.girl_image_urls && data.girl.girl_image_urls.length > 0
+        ? data.girl.girl_image_urls.map(img => img.image_url)
+        : []
+      setImageUrls(imageUrlsList.length > 0 ? imageUrlsList : [''])
+      setValidImageUrls([])
+      setCurrentImageIndex(0)
       setIsEditing(false)
     } catch (error) {
       console.error('Save girl error:', error)
@@ -232,9 +318,18 @@ function GirlDetail({ user, girlName, onShopClick }) {
       setUrls(girl.girl_urls && girl.girl_urls.length > 0 
         ? girl.girl_urls.map(url => url.url)
         : [''])
+      const imageUrlsList = girl.girl_image_urls && girl.girl_image_urls.length > 0
+        ? girl.girl_image_urls.map(img => img.image_url)
+        : []
+      setImageUrls(imageUrlsList.length > 0 ? imageUrlsList : [''])
+      setValidImageUrls([])
+      setCurrentImageIndex(0)
     } else {
       setMemo('')
       setUrls([''])
+      setImageUrls([''])
+      setValidImageUrls([])
+      setCurrentImageIndex(0)
     }
     setIsEditing(false)
     setError(null)
@@ -326,6 +421,48 @@ function GirlDetail({ user, girlName, onShopClick }) {
       {!editingRecord && (
         <>
       <div className="girl-detail-header">
+        {!isEditing && validImageUrls.length > 0 && (
+          <div className="girl-detail-image-container">
+            <div className="girl-detail-image-slider">
+              {validImageUrls.map((imageUrl, index) => (
+                <img
+                  key={imageUrl}
+                  src={imageUrl}
+                  alt={`${girlName} ${index + 1}`}
+                  className={`girl-detail-image ${index === currentImageIndex ? 'active' : ''}`}
+                  onLoad={() => handleImageLoad(imageUrl)}
+                  onError={() => handleImageError(imageUrl)}
+                  style={{ display: index === currentImageIndex ? 'block' : 'none' }}
+                />
+              ))}
+              {validImageUrls.length > 1 && (
+                <>
+                  <button
+                    className="girl-detail-image-nav girl-detail-image-nav-prev"
+                    onClick={handlePrevImage}
+                    aria-label="前の画像"
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                  <button
+                    className="girl-detail-image-nav girl-detail-image-nav-next"
+                    onClick={handleNextImage}
+                    aria-label="次の画像"
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                  <div className="girl-detail-image-indicator">
+                    {currentImageIndex + 1} / {validImageUrls.length}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
         <div className="girl-detail-title-section">
           <h2 className="girl-detail-title">{girlName}</h2>
           {records.length > 0 && (
@@ -385,7 +522,7 @@ function GirlDetail({ user, girlName, onShopClick }) {
                 
                 {girl?.girl_urls && girl.girl_urls.length > 0 && (
                   <div className="girl-detail-urls-display">
-                    <h4 className="girl-detail-urls-label">ヒメのURL</h4>
+                    <h4 className="girl-detail-urls-label">その他URL</h4>
                     <ul className="girl-detail-urls-list">
                       {girl.girl_urls.map((girlUrl, index) => (
                         <li key={girlUrl.id || index} className="girl-detail-url-item">
@@ -403,7 +540,7 @@ function GirlDetail({ user, girlName, onShopClick }) {
                   </div>
                 )}
                 
-                {(!girl?.memo && (!girl?.girl_urls || girl.girl_urls.length === 0)) && (
+                {(!girl?.memo && (!girl?.girl_urls || girl.girl_urls.length === 0) && (!girl?.girl_image_urls || girl.girl_image_urls.length === 0)) && (
                   <div className="girl-detail-empty-info">
                     <p>ヒメ情報が登録されていません。</p>
                     <button 
@@ -419,22 +556,6 @@ function GirlDetail({ user, girlName, onShopClick }) {
               <div className="girl-detail-info-edit">
                 <div className="girl-detail-info-header">
                   <h3 className="girl-detail-info-title">ヒメ情報を編集</h3>
-                  <div className="girl-detail-edit-actions">
-                    <button 
-                      className="girl-detail-cancel-btn"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      キャンセル
-                    </button>
-                    <button 
-                      className="girl-detail-save-btn"
-                      onClick={handleSave}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? '保存中...' : '保存'}
-                    </button>
-                  </div>
                 </div>
                 
                 <div className="girl-detail-form-group">
@@ -453,7 +574,55 @@ function GirlDetail({ user, girlName, onShopClick }) {
                 
                 <div className="girl-detail-form-group">
                   <label className="girl-detail-form-label">
-                    ヒメのURL
+                    画像URL
+                  </label>
+                  {imageUrls.map((imageUrl, index) => (
+                    <div key={index} className="girl-detail-image-url-item">
+                      <div className="girl-detail-url-input-group">
+                        <input
+                          type="url"
+                          className="girl-detail-form-input"
+                          value={imageUrl}
+                          onChange={(e) => handleImageUrlChange(index, e.target.value)}
+                          placeholder="https://example.com/image.jpg"
+                        />
+                        {imageUrls.length > 1 && (
+                          <button
+                            type="button"
+                            className="girl-detail-url-remove-btn"
+                            onClick={() => handleRemoveImageUrl(index)}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                      {imageUrl && (
+                        <div className="girl-detail-image-preview">
+                          <img 
+                            src={imageUrl} 
+                            alt={`プレビュー ${index + 1}`}
+                            className="girl-detail-image-preview-img"
+                            onLoad={() => handleImageLoad(imageUrl)}
+                            onError={() => handleImageError(imageUrl)}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="girl-detail-url-add-btn"
+                    onClick={handleAddImageUrl}
+                  >
+                    + 画像URLを追加
+                  </button>
+                </div>
+                
+                <div className="girl-detail-form-group">
+                  <label className="girl-detail-form-label">
+                    その他URL
                   </label>
                   {urls.map((url, index) => (
                     <div key={index} className="girl-detail-url-input-group">
@@ -489,6 +658,23 @@ function GirlDetail({ user, girlName, onShopClick }) {
                 {error && (
                   <div className="girl-detail-error-message">{error}</div>
                 )}
+                
+                <div className="girl-detail-edit-actions">
+                  <button 
+                    className="girl-detail-cancel-btn"
+                    onClick={handleCancel}
+                    disabled={isSaving}
+                  >
+                    キャンセル
+                  </button>
+                  <button 
+                    className="girl-detail-save-btn"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? '保存中...' : '保存'}
+                  </button>
+                </div>
               </div>
             )}
           </>
@@ -651,4 +837,3 @@ GirlDetail.propTypes = {
 }
 
 export default GirlDetail
-

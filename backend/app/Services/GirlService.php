@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Girl;
 use App\Models\GirlUrl;
+use App\Models\GirlImageUrl;
 use App\Models\Record;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -17,14 +18,14 @@ class GirlService
     {
         return Girl::where('user_id', $userId)
             ->where('girl_name', $girlName)
-            ->with('girlUrls')
+            ->with(['girlUrls', 'girlImageUrls'])
             ->first();
     }
 
     /**
      * ヒメ情報を作成または更新
      */
-    public function createOrUpdateGirl(string $userId, string $girlName, ?string $memo, array $urls = []): Girl
+    public function createOrUpdateGirl(string $userId, string $girlName, ?string $memo, array $urls = [], array $imageUrls = []): Girl
     {
         DB::beginTransaction();
         try {
@@ -74,10 +75,29 @@ class GirlService
                 }
             }
 
+            // 既存の画像URLを削除
+            $girl->girlImageUrls()->delete();
+
+            // 新しい画像URLを追加
+            $imageDisplayOrder = 0;
+            foreach ($imageUrls as $imageUrl) {
+                $trimmedImageUrl = trim($imageUrl);
+                if (!empty($trimmedImageUrl)) {
+                    // URL形式のチェック
+                    if (filter_var($trimmedImageUrl, FILTER_VALIDATE_URL)) {
+                        GirlImageUrl::create([
+                            'girl_id' => $girl->id,
+                            'image_url' => $trimmedImageUrl,
+                            'display_order' => $imageDisplayOrder++,
+                        ]);
+                    }
+                }
+            }
+
             DB::commit();
 
             // リレーションを再読み込み
-            $girl->load('girlUrls');
+            $girl->load(['girlUrls', 'girlImageUrls']);
 
             Log::info('Girl created or updated', [
                 'girl_id' => $girl->id,
@@ -148,5 +168,3 @@ class GirlService
         return $girlList;
     }
 }
-
-

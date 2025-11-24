@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
-class Girl extends Model
+class GirlImageUrl extends Model
 {
     use HasFactory;
 
@@ -15,25 +15,17 @@ class Girl extends Model
 
     protected $fillable = [
         'id',
-        'user_id',
-        'girl_name',
-        'memo',
+        'girl_id',
+        'image_url',
+        'display_order',
     ];
 
     /**
-     * GirlUrlとのリレーション
+     * Girlとのリレーション
      */
-    public function girlUrls()
+    public function girl()
     {
-        return $this->hasMany(GirlUrl::class, 'girl_id')->orderBy('display_order');
-    }
-
-    /**
-     * GirlImageUrlとのリレーション
-     */
-    public function girlImageUrls()
-    {
-        return $this->hasMany(GirlImageUrl::class, 'girl_id')->orderBy('display_order');
+        return $this->belongsTo(Girl::class, 'girl_id');
     }
 
     protected static function boot()
@@ -47,5 +39,4 @@ class Girl extends Model
         });
     }
 }
-
 

@@ -83,17 +83,21 @@ class GirlController extends Controller
                 'memo' => 'nullable|string',
                 'urls' => 'nullable|array',
                 'urls.*' => 'nullable|string',
+                'image_urls' => 'nullable|array',
+                'image_urls.*' => 'nullable|string|url',
             ]);
 
             $girlName = $request->input('girl_name');
             $memo = $request->input('memo');
             $urls = $request->input('urls', []);
+            $imageUrls = $request->input('image_urls', []);
 
             $girl = $this->girlService->createOrUpdateGirl(
                 $authenticatedUserId,
                 $girlName,
                 $memo,
-                $urls
+                $urls,
+                $imageUrls
             );
 
             $result = response()->json([
@@ -148,5 +152,3 @@ class GirlController extends Controller
         }
     }
 }
-
-
