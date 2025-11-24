@@ -61,7 +61,16 @@ function App() {
 
   // ページ遷移時にトップにスクロール
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    // requestAnimationFrameを使って、次のフレームでスクロール
+    // これにより、コンテンツがレンダリングされた後にスクロールが実行される
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: 'auto' })
+        // iOS Safariで確実にスクロール位置をリセットするため、document.documentElementも設定
+        document.documentElement.scrollTop = 0
+        document.body.scrollTop = 0
+      })
+    })
   }, [currentPage, selectedShop, selectedGirl])
 
   // Google Identity Services のスクリプトを読み込む
@@ -139,8 +148,14 @@ function App() {
         setUser(data.user)
         setIsLoggedIn(true)
         setCurrentPage('home') // ログイン時はホームに設定
-        // ページ遷移時にトップにスクロール
-        window.scrollTo({ top: 0, behavior: 'smooth' })
+        // ページ遷移時にトップにスクロール（useEffectで処理されるため、ここでは不要だが念のため）
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: 0, behavior: 'auto' })
+            document.documentElement.scrollTop = 0
+            document.body.scrollTop = 0
+          })
+        })
         console.log('Login successful:', data.user)
       } else {
         console.error('Login failed - invalid response:', data)
@@ -176,8 +191,14 @@ function App() {
       setUser(null)
       setIsLoggedIn(false)
       setCurrentPage('home') // ログアウト時もホームにリセット
-      // ページ遷移時にトップにスクロール
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      // ページ遷移時にトップにスクロール（useEffectで処理されるため、ここでは不要だが念のため）
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: 0, behavior: 'auto' })
+          document.documentElement.scrollTop = 0
+          document.body.scrollTop = 0
+        })
+      })
       console.log('Logout successful')
     } catch (error) {
       console.error('Logout error:', error)
@@ -188,8 +209,14 @@ function App() {
       setUser(null)
       setIsLoggedIn(false)
       setCurrentPage('home') // ログアウト時もホームにリセット
-      // ページ遷移時にトップにスクロール
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      // ページ遷移時にトップにスクロール（useEffectで処理されるため、ここでは不要だが念のため）
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: 0, behavior: 'auto' })
+          document.documentElement.scrollTop = 0
+          document.body.scrollTop = 0
+        })
+      })
     }
   }
 
@@ -198,16 +225,28 @@ function App() {
     setSelectedShop(null)
     setSelectedGirl(null)
     setCurrentPage(pageId)
-    // ページ遷移時にトップにスクロール
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    // ページ遷移時にトップにスクロール（useEffectで処理されるため、ここでは不要だが念のため）
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: 'auto' })
+        document.documentElement.scrollTop = 0
+        document.body.scrollTop = 0
+      })
+    })
     console.log('Navigate to:', pageId)
   }
 
   const handleRecordAdded = () => {
     // 登録完了後はホームに戻る
     setCurrentPage('home')
-    // ページ遷移時にトップにスクロール
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    // ページ遷移時にトップにスクロール（useEffectで処理されるため、ここでは不要だが念のため）
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: 'auto' })
+        document.documentElement.scrollTop = 0
+        document.body.scrollTop = 0
+      })
+    })
   }
 
   const handleRecordsLoaded = (recordCount) => {
@@ -223,22 +262,40 @@ function App() {
     setSelectedGirl(null)
     // お店詳細画面を表示する際は、お店メニューをアクティブにする
     setCurrentPage('discover')
-    // ページ遷移時にトップにスクロール
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    // ページ遷移時にトップにスクロール（useEffectで処理されるため、ここでは不要だが念のため）
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: 'auto' })
+        document.documentElement.scrollTop = 0
+        document.body.scrollTop = 0
+      })
+    })
   }
 
   const handleGirlClick = (girlName) => {
     setSelectedGirl(girlName)
     // ヒメ詳細画面を表示する際は、ヒメメニューをアクティブにする
     setCurrentPage('girls')
-    // ページ遷移時にトップにスクロール
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    // ページ遷移時にトップにスクロール（useEffectで処理されるため、ここでは不要だが念のため）
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: 'auto' })
+        document.documentElement.scrollTop = 0
+        document.body.scrollTop = 0
+      })
+    })
   }
 
   const handleGirlDetailBack = () => {
     setSelectedGirl(null)
-    // ページ遷移時にトップにスクロール
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    // ページ遷移時にトップにスクロール（useEffectで処理されるため、ここでは不要だが念のため）
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: 'auto' })
+        document.documentElement.scrollTop = 0
+        document.body.scrollTop = 0
+      })
+    })
   }
 
   return (

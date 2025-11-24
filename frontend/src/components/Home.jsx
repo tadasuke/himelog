@@ -250,7 +250,15 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
                     </span>
                   </div>
                   <div className="log-card-info">
-                    <h3 className="log-card-title">
+                    <h3 
+                      className="log-card-title clickable"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (onGirlClick && record.girl_name) {
+                          onGirlClick(record.girl_name)
+                        }
+                      }}
+                    >
                       {record.girl_name}
                     </h3>
                   </div>
