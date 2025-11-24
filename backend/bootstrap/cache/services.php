@@ -27,6 +27,8 @@
     23 => 'Laravel\\Socialite\\SocialiteServiceProvider',
     24 => 'Carbon\\Laravel\\ServiceProvider',
     25 => 'Termwind\\Laravel\\TermwindServiceProvider',
+    26 => 'App\\Providers\\LoggingServiceProvider',
+    27 => 'App\\Providers\\ConfigCacheServiceProvider',
   ),
   'eager' => 
   array (
@@ -42,6 +44,8 @@
     9 => 'Illuminate\\View\\ViewServiceProvider',
     10 => 'Carbon\\Laravel\\ServiceProvider',
     11 => 'Termwind\\Laravel\\TermwindServiceProvider',
+    12 => 'App\\Providers\\LoggingServiceProvider',
+    13 => 'App\\Providers\\ConfigCacheServiceProvider',
   ),
   'deferred' => 
   array (
