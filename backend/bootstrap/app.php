@@ -8,6 +8,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withProviders([
         \App\Providers\LoggingServiceProvider::class,
         \App\Providers\ConfigCacheServiceProvider::class,
+        \App\Providers\DatabaseConnectionServiceProvider::class,
     ])
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
