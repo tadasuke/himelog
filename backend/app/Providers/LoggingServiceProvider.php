@@ -22,6 +22,15 @@ class LoggingServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // 実行環境に応じてログチャネルを設定
+        if (app()->runningInConsole()) {
+            // コマンド実行時はcommandチャネルを使用
+            Config::set('logging.default', 'command');
+        } else {
+            // Web/APIリクエスト時はapiチャネルを使用
+            Config::set('logging.default', 'api');
+        }
+
         // アプリケーション起動時にDB接続情報をログに記録
         $this->logDatabaseConnectionInfo();
 
