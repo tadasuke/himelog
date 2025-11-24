@@ -59,6 +59,11 @@ function App() {
     }
   }, [])
 
+  // ページ遷移時にトップにスクロール
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [currentPage, selectedShop, selectedGirl])
+
   // Google Identity Services のスクリプトを読み込む
   useEffect(() => {
     const script = document.createElement('script')
@@ -134,6 +139,8 @@ function App() {
         setUser(data.user)
         setIsLoggedIn(true)
         setCurrentPage('home') // ログイン時はホームに設定
+        // ページ遷移時にトップにスクロール
+        window.scrollTo({ top: 0, behavior: 'smooth' })
         console.log('Login successful:', data.user)
       } else {
         console.error('Login failed - invalid response:', data)
@@ -169,6 +176,8 @@ function App() {
       setUser(null)
       setIsLoggedIn(false)
       setCurrentPage('home') // ログアウト時もホームにリセット
+      // ページ遷移時にトップにスクロール
+      window.scrollTo({ top: 0, behavior: 'smooth' })
       console.log('Logout successful')
     } catch (error) {
       console.error('Logout error:', error)
@@ -179,6 +188,8 @@ function App() {
       setUser(null)
       setIsLoggedIn(false)
       setCurrentPage('home') // ログアウト時もホームにリセット
+      // ページ遷移時にトップにスクロール
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     }
   }
 
@@ -187,12 +198,16 @@ function App() {
     setSelectedShop(null)
     setSelectedGirl(null)
     setCurrentPage(pageId)
+    // ページ遷移時にトップにスクロール
+    window.scrollTo({ top: 0, behavior: 'smooth' })
     console.log('Navigate to:', pageId)
   }
 
   const handleRecordAdded = () => {
     // 登録完了後はホームに戻る
     setCurrentPage('home')
+    // ページ遷移時にトップにスクロール
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleRecordsLoaded = (recordCount) => {
@@ -208,16 +223,22 @@ function App() {
     setSelectedGirl(null)
     // お店詳細画面を表示する際は、お店メニューをアクティブにする
     setCurrentPage('discover')
+    // ページ遷移時にトップにスクロール
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleGirlClick = (girlName) => {
     setSelectedGirl(girlName)
     // ヒメ詳細画面を表示する際は、ヒメメニューをアクティブにする
     setCurrentPage('girls')
+    // ページ遷移時にトップにスクロール
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleGirlDetailBack = () => {
     setSelectedGirl(null)
+    // ページ遷移時にトップにスクロール
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   return (
