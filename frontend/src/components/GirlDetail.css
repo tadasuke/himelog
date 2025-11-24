@@ -257,6 +257,10 @@
   text-decoration: underline;
 }
 
+.log-card-shop-name.clickable:visited {
+  color: #e86aff;
+}
+
 .log-card-shop-name.clickable:hover {
   color: #ff8aff;
 }
@@ -846,6 +850,10 @@
   text-decoration: none;
   word-break: break-all;
   transition: color 0.3s ease;
+}
+
+.girl-detail-url-link:visited {
+  color: #6f8cff;
 }
 
 .girl-detail-url-link:hover {

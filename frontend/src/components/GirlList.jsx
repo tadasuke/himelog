@@ -60,6 +60,7 @@ function GirlList({ user, onShopClick, onGirlClick }) {
 
   return (
     <div className="girl-list-container">
+      <h2 className="girl-list-title">ヒメ一覧</h2>
       <div className="girl-list-section">
         {isLoading && (
           <div className="loading-message">読み込み中...</div>

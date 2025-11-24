@@ -7,8 +7,21 @@
   padding-bottom: 100px; /* ナビゲーションバーのための余白を確保 */
 }
 
+.girl-list-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #e8e8e8;
+  margin-bottom: 32px;
+  letter-spacing: 0.3px;
+  background: linear-gradient(135deg, #e86aff 0%, #6f8cff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.2;
+}
+
 .girl-list-section {
-  margin-top: 32px;
+  margin-top: 0;
 }
 
 .logs-grid {
@@ -80,6 +93,10 @@
   touch-action: manipulation;
 }
 
+.log-card-title.clickable:visited {
+  color: #6f8cff;
+}
+
 .log-card-title.clickable:hover {
   color: #e86aff;
   text-decoration: underline;
@@ -132,6 +149,10 @@
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   text-decoration: underline;
+}
+
+.log-card-shop-name.clickable:visited {
+  color: #e86aff;
 }
 
 .log-card-shop-name.clickable:hover {
@@ -312,8 +333,13 @@
     padding: 40px 24px;
   }
 
+  .girl-list-title {
+    font-size: 42px;
+    margin-bottom: 40px;
+  }
+
   .girl-list-section {
-    margin-top: 60px;
+    margin-top: 0;
   }
 
   .logs-grid {

@@ -220,6 +220,10 @@
   touch-action: manipulation;
 }
 
+.log-card-title-clickable:visited {
+  color: #6f8cff;
+}
+
 .log-card-title-clickable:active {
   color: #e86aff;
 }
@@ -728,6 +732,10 @@
   text-decoration: none;
   word-break: break-all;
   transition: color 0.3s ease;
+}
+
+.shop-detail-url-link:visited {
+  color: #6f8cff;
 }
 
 .shop-detail-url-link:hover {

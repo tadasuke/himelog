@@ -222,7 +222,12 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
             {records.map((record) => {
               const isExpanded = expandedCards.has(record.id)
               return (
-                <div key={record.id} className="log-card">
+                <div 
+                  key={record.id} 
+                  className="log-card"
+                  onClick={() => toggleCard(record.id)}
+                  style={{ cursor: 'pointer' }}
+                >
                   <div className="log-card-header">
                     <div className="log-card-shop">
                       <span className="log-card-shop-type">
@@ -305,7 +310,10 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
                     {isExpanded && (
                       <button 
                         className="log-card-btn log-card-btn-delete" 
-                        onClick={() => handleDeleteClick(record)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteClick(record)
+                        }}
                         title="削除"
                       >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -318,7 +326,10 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
                       {isExpanded && (
                         <button 
                           className="log-card-btn log-card-btn-edit" 
-                          onClick={() => handleEditRecord(record)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleEditRecord(record)
+                          }}
                           title="編集"
                         >
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -326,21 +337,20 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
                           </svg>
                         </button>
                       )}
-                      <button 
-                        className="log-card-btn" 
-                        onClick={() => toggleCard(record.id)}
-                        title={isExpanded ? '折りたたむ' : '続きを見る'}
-                      >
-                        {isExpanded ? (
+                      {isExpanded && (
+                        <button 
+                          className="log-card-btn" 
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleCard(record.id)
+                          }}
+                          title="折りたたむ"
+                        >
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M18 15L12 9L6 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
-                        ) : (
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        )}
-                      </button>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
