@@ -3,7 +3,7 @@ import PropTypes from 'prop-types'
 import './ShopList.css'
 import { getApiUrl, getAuthHeaders, getAuthToken, handleAuthError } from '../utils/api'
 
-function ShopList({ user }) {
+function ShopList({ user, onShopClick }) {
   const [shops, setShops] = useState({})
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -70,7 +70,11 @@ function ShopList({ user }) {
               <h3 className="shop-type-title">{shopType}</h3>
               <ul className="shop-name-list">
                 {shops[shopType].map((shopName, index) => (
-                  <li key={index} className="shop-name-item">
+                  <li 
+                    key={index} 
+                    className="shop-name-item"
+                    onClick={() => onShopClick && onShopClick(shopType, shopName)}
+                  >
                     {shopName}
                   </li>
                 ))}
@@ -90,6 +94,7 @@ ShopList.propTypes = {
     email: PropTypes.string,
     avatar: PropTypes.string,
   }),
+  onShopClick: PropTypes.func,
 }
 
 export default ShopList

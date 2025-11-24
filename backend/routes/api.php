@@ -26,7 +26,15 @@ Route::middleware([\App\Http\Middleware\AuthenticateUser::class])->group(functio
     Route::delete('/records/{id}', [RecordController::class, 'destroy']);
     Route::get('/records/shop-names', [RecordController::class, 'getShopNames']);
     Route::get('/records/girl-names', [RecordController::class, 'getGirlNames']);
+    Route::get('/records/all-girl-names', [RecordController::class, 'getAllGirlNames']);
     Route::get('/records/shops', [RecordController::class, 'getShops']);
+    Route::get('/records/shop-records', [RecordController::class, 'getShopRecords']);
+    Route::get('/records/girl-records', [RecordController::class, 'getGirlRecords']);
+    Route::get('/shops', [\App\Http\Controllers\ShopController::class, 'getShop']);
+    Route::post('/shops', [\App\Http\Controllers\ShopController::class, 'createOrUpdateShop']);
+    Route::get('/girls', [\App\Http\Controllers\GirlController::class, 'getGirl']);
+    Route::get('/girls/list', [\App\Http\Controllers\GirlController::class, 'getGirlList']);
+    Route::post('/girls', [\App\Http\Controllers\GirlController::class, 'createOrUpdateGirl']);
     // お店の種類関連のAPI（認証必須：ユーザー別の並び順を適用するため）
     Route::get('/shop-types', [ShopTypeController::class, 'index']);
 });

@@ -62,12 +62,21 @@
   border: 1px solid rgba(232, 106, 255, 0.1);
   letter-spacing: 0.1px;
   transition: all 0.3s ease;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .shop-name-item:hover {
   background-color: rgba(232, 106, 255, 0.1);
   border-color: rgba(232, 106, 255, 0.3);
   transform: translateX(4px);
+}
+
+.shop-name-item:active {
+  background-color: rgba(232, 106, 255, 0.15);
+  border-color: rgba(232, 106, 255, 0.4);
+  transform: translateX(2px) scale(0.98);
 }
 
 .loading-message,

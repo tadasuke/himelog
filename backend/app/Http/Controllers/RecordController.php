@@ -191,6 +191,41 @@ class RecordController extends Controller
     }
 
     /**
+     * ユーザーが投稿したことがある全ヒメ（女の子）の一覧を取得
+     */
+    public function getAllGirlNames(Request $request): JsonResponse
+    {
+        $this->logMethodStart(__FUNCTION__, ['request' => $request], __FILE__, __LINE__);
+        try {
+            // 認証されたユーザーIDを取得
+            $authenticatedUserId = $request->input('authenticated_user_id');
+            if (!$authenticatedUserId) {
+                return response()->json([
+                    'error' => 'Unauthorized',
+                    'message' => '認証が必要です'
+                ], 401);
+            }
+
+            $girlNames = $this->recordService->getAllGirlNames($authenticatedUserId);
+
+            $result = response()->json([
+                'success' => true,
+                'girl_names' => $girlNames
+            ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('All girl names fetch error: ' . $e->getMessage());
+            $result = response()->json([
+                'error' => 'Failed to fetch girl names',
+                'message' => $e->getMessage()
+            ], 500);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        }
+    }
+
+    /**
      * ユーザーが登録した全お店の一覧を取得（shop_typeごとにグループ化）
      */
     public function getShops(Request $request): JsonResponse
@@ -271,6 +306,99 @@ class RecordController extends Controller
             Log::error('Record update error: ' . $e->getMessage());
             $result = response()->json([
                 'error' => 'Failed to update record',
+                'message' => $e->getMessage()
+            ], 500);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        }
+    }
+
+    /**
+     * 特定のお店の記録一覧を取得
+     */
+    public function getShopRecords(Request $request): JsonResponse
+    {
+        $this->logMethodStart(__FUNCTION__, ['request' => $request], __FILE__, __LINE__);
+        try {
+            // 認証されたユーザーIDを取得
+            $authenticatedUserId = $request->input('authenticated_user_id');
+            if (!$authenticatedUserId) {
+                return response()->json([
+                    'error' => 'Unauthorized',
+                    'message' => '認証が必要です'
+                ], 401);
+            }
+
+            $shopType = $request->query('shop_type');
+            $shopName = $request->query('shop_name');
+            
+            if (!$shopType) {
+                return response()->json([
+                    'error' => 'shop_type is required'
+                ], 400);
+            }
+
+            if (!$shopName) {
+                return response()->json([
+                    'error' => 'shop_name is required'
+                ], 400);
+            }
+
+            $records = $this->recordService->getShopRecords($authenticatedUserId, $shopType, $shopName);
+
+            $result = response()->json([
+                'success' => true,
+                'records' => $records
+            ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('Shop records fetch error: ' . $e->getMessage());
+            $result = response()->json([
+                'error' => 'Failed to fetch shop records',
+                'message' => $e->getMessage()
+            ], 500);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        }
+    }
+
+    /**
+     * 特定のヒメ（女の子）の記録一覧を取得
+     */
+    public function getGirlRecords(Request $request): JsonResponse
+    {
+        $this->logMethodStart(__FUNCTION__, ['request' => $request], __FILE__, __LINE__);
+        try {
+            // 認証されたユーザーIDを取得
+            $authenticatedUserId = $request->input('authenticated_user_id');
+            if (!$authenticatedUserId) {
+                return response()->json([
+                    'error' => 'Unauthorized',
+                    'message' => '認証が必要です'
+                ], 401);
+            }
+
+            $girlName = $request->query('girl_name');
+            
+            if (!$girlName) {
+                return response()->json([
+                    'error' => 'girl_name is required'
+                ], 400);
+            }
+
+            $records = $this->recordService->getGirlRecords($authenticatedUserId, $girlName);
+
+            $result = response()->json([
+                'success' => true,
+                'records' => $records
+            ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('Girl records fetch error: ' . $e->getMessage());
+            $result = response()->json([
+                'error' => 'Failed to fetch girl records',
                 'message' => $e->getMessage()
             ], 500);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);

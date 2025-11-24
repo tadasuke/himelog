@@ -5,7 +5,7 @@ import RecordForm from './RecordForm'
 import StarRating from './StarRating'
 import { getApiUrl, getAuthHeaders, getAuthToken, handleAuthError } from '../utils/api'
 
-function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded }) {
+function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onShopClick, onGirlClick }) {
   const [records, setRecords] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -228,14 +228,37 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded }) {
                           ? record.shop_type 
                           : record.shop_type?.name || record.shop_type_id || ''}
                       </span>
-                      <span className="log-card-shop-name">{record.shop_name}</span>
+                      <span 
+                        className="log-card-shop-name clickable"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (onShopClick) {
+                            const shopType = typeof record.shop_type === 'string' 
+                              ? record.shop_type 
+                              : record.shop_type?.name || record.shop_type_id || ''
+                            onShopClick(shopType, record.shop_name)
+                          }
+                        }}
+                      >
+                        {record.shop_name}
+                      </span>
                     </div>
                     <span className="log-card-date">
                       {record.visit_date ? formatDate(record.visit_date) : formatDate(record.created_at)}
                     </span>
                   </div>
                   <div className="log-card-info">
-                    <h3 className="log-card-title">{record.girl_name}</h3>
+                    <h3 
+                      className="log-card-title clickable"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (onGirlClick && record.girl_name) {
+                          onGirlClick(record.girl_name)
+                        }
+                      }}
+                    >
+                      {record.girl_name}
+                    </h3>
                   </div>
                   <div className="log-card-ratings">
                     <div className="log-card-rating-item">
@@ -259,6 +282,18 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded }) {
                       </>
                     )}
                   </div>
+                  {isExpanded && record.course && (
+                    <div className="log-card-price">
+                      <span className="log-card-price-label">コース</span>
+                      <span className="log-card-price-value">{record.course}</span>
+                    </div>
+                  )}
+                  {isExpanded && record.price && (
+                    <div className="log-card-price">
+                      <span className="log-card-price-label">利用料金</span>
+                      <span className="log-card-price-value">¥{record.price.toLocaleString()}</span>
+                    </div>
+                  )}
                   {record.review && (
                     <p className={`log-card-preview ${isExpanded ? 'expanded' : 'collapsed'}`}>
                       {isExpanded ? record.review : getPreviewText(record.review, 2)}
@@ -328,6 +363,8 @@ Home.propTypes = {
   currentPage: PropTypes.string.isRequired,
   onRecordAdded: PropTypes.func,
   onRecordsLoaded: PropTypes.func,
+  onShopClick: PropTypes.func,
+  onGirlClick: PropTypes.func,
 }
 
 export default Home

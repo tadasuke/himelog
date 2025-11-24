@@ -8,17 +8,29 @@ function StarRating({ rating, onRatingChange, readonly = false }) {
     }
   }
 
+  const getStarClass = (value) => {
+    if (value <= rating) {
+      return 'filled'
+    } else if (value - 0.5 <= rating) {
+      return 'half-filled'
+    }
+    return ''
+  }
+
   return (
     <div className="star-rating">
-      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => (
-        <span
-          key={value}
-          className={`star ${value <= rating ? 'filled' : ''} ${!readonly ? 'clickable' : ''}`}
-          onClick={() => handleStarClick(value)}
-        >
-          ★
-        </span>
-      ))}
+      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => {
+        const starClass = getStarClass(value)
+        return (
+          <span
+            key={value}
+            className={`star ${starClass} ${!readonly ? 'clickable' : ''}`}
+            onClick={() => handleStarClick(value)}
+          >
+            ★
+          </span>
+        )
+      })}
     </div>
   )
 }

@@ -3,6 +3,9 @@ import Login from './components/Login'
 import Home from './components/Home'
 import MyPage from './components/MyPage'
 import ShopList from './components/ShopList'
+import ShopDetail from './components/ShopDetail'
+import GirlList from './components/GirlList'
+import GirlDetail from './components/GirlDetail'
 import BottomNavigation from './components/BottomNavigation'
 import { getApiUrl, removeAuthToken, getAuthToken } from './utils/api'
 import './App.css'
@@ -11,6 +14,8 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [user, setUser] = useState(null)
   const [currentPage, setCurrentPage] = useState('home')
+  const [selectedShop, setSelectedShop] = useState(null)
+  const [selectedGirl, setSelectedGirl] = useState(null)
 
   // ページロード時にローカルストレージからログイン状態を復元
   useEffect(() => {
@@ -162,8 +167,10 @@ function App() {
   }
 
   const handleNavigate = (pageId) => {
+    // 詳細画面を閉じて、指定されたページに遷移
+    setSelectedShop(null)
+    setSelectedGirl(null)
     setCurrentPage(pageId)
-    // ここで各ページへの遷移処理を追加できます
     console.log('Navigate to:', pageId)
   }
 
@@ -179,16 +186,46 @@ function App() {
     }
   }
 
+  const handleShopClick = (shopType, shopName) => {
+    setSelectedShop({ shopType, shopName })
+    // お店詳細画面に遷移する際は、ヒメ詳細画面を閉じる
+    setSelectedGirl(null)
+  }
+
+  const handleGirlClick = (girlName) => {
+    setSelectedGirl(girlName)
+  }
+
+  const handleGirlDetailBack = () => {
+    setSelectedGirl(null)
+  }
+
   return (
     <div className="app">
       {!isLoggedIn ? (
         <Login onGoogleLogin={handleGoogleLogin} />
       ) : (
         <>
-          {currentPage === 'mypage' ? (
+          {selectedShop ? (
+            <ShopDetail 
+              user={user}
+              shopType={selectedShop.shopType}
+              shopName={selectedShop.shopName}
+              onGirlClick={handleGirlClick}
+            />
+          ) : selectedGirl ? (
+            <GirlDetail 
+              user={user}
+              girlName={selectedGirl}
+              onBack={handleGirlDetailBack}
+              onShopClick={handleShopClick}
+            />
+          ) : currentPage === 'mypage' ? (
             <MyPage user={user} onLogout={handleLogout} />
           ) : currentPage === 'discover' ? (
-            <ShopList user={user} />
+            <ShopList user={user} onShopClick={handleShopClick} />
+          ) : currentPage === 'girls' ? (
+            <GirlList user={user} onShopClick={handleShopClick} onGirlClick={handleGirlClick} />
           ) : (
             <Home 
               user={user} 
@@ -196,6 +233,8 @@ function App() {
               currentPage={currentPage}
               onRecordAdded={handleRecordAdded}
               onRecordsLoaded={handleRecordsLoaded}
+              onShopClick={handleShopClick}
+              onGirlClick={handleGirlClick}
             />
           )}
           <BottomNavigation 

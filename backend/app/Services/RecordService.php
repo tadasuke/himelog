@@ -49,6 +49,8 @@ class RecordService
             'service_rating' => $data['service_rating'] ?? null,
             'overall_rating' => $data['overall_rating'] ?? null,
             'review' => $data['review'] ?? null,
+            'price' => $data['price'] ?? null,
+            'course' => $data['course'] ?? null,
         ]);
 
         Log::info('Record created', ['record_id' => $record->id, 'user_id' => $record->user_id]);
@@ -94,6 +96,8 @@ class RecordService
             'service_rating' => $data['service_rating'] ?? null,
             'overall_rating' => $data['overall_rating'] ?? null,
             'review' => $data['review'] ?? null,
+            'price' => $data['price'] ?? null,
+            'course' => $data['course'] ?? null,
         ]);
 
         Log::info('Record updated', ['record_id' => $record->id, 'user_id' => $record->user_id]);
@@ -155,6 +159,20 @@ class RecordService
     }
 
     /**
+     * ユーザーが投稿したことがある全ヒメ（女の子）の一覧を取得
+     */
+    public function getAllGirlNames(string $userId)
+    {
+        return Record::where('user_id', $userId)
+            ->whereNotNull('girl_name')
+            ->where('girl_name', '!=', '')
+            ->distinct()
+            ->pluck('girl_name')
+            ->sort()
+            ->values();
+    }
+
+    /**
      * ユーザーが登録した全お店の一覧を取得（shop_typeごとにグループ化）
      */
     public function getShops(string $userId): array
@@ -177,6 +195,35 @@ class RecordService
             ->toArray();
 
         return $shops;
+    }
+
+    /**
+     * 特定のお店の記録一覧を取得
+     */
+    public function getShopRecords(string $userId, string $shopType, string $shopName)
+    {
+        $shopTypeId = $this->convertShopTypeToId($shopType);
+        
+        return Record::where('user_id', $userId)
+            ->where('shop_type_id', $shopTypeId)
+            ->where('shop_name', $shopName)
+            ->with('shopType')
+            ->orderBy('visit_date', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
+    /**
+     * 特定のヒメ（女の子）の記録一覧を取得
+     */
+    public function getGirlRecords(string $userId, string $girlName)
+    {
+        return Record::where('user_id', $userId)
+            ->where('girl_name', $girlName)
+            ->with('shopType')
+            ->orderBy('visit_date', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get();
     }
 }
 

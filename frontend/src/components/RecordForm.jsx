@@ -29,11 +29,13 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
     shopName: editingRecord?.shop_name || '',
     girlName: editingRecord?.girl_name || '',
     visitDate: editingRecord ? formatDateForInput(editingRecord.visit_date) : getTodayString(),
-    faceRating: editingRecord?.face_rating || 0,
-    styleRating: editingRecord?.style_rating || 0,
-    serviceRating: editingRecord?.service_rating || 0,
-    overallRating: editingRecord?.overall_rating || 0,
+    faceRating: editingRecord?.face_rating || 1,
+    styleRating: editingRecord?.style_rating || 1,
+    serviceRating: editingRecord?.service_rating || 1,
+    overallRating: editingRecord?.overall_rating || 1,
     review: editingRecord?.review || '',
+    price: editingRecord?.price || '',
+    course: editingRecord?.course || '',
   })
   const [shopTypes, setShopTypes] = useState([])
   const [isLoadingShopTypes, setIsLoadingShopTypes] = useState(true)
@@ -357,11 +359,12 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
       setError('来店日を入力してください')
       return
     }
-    if (!formData.shopType.trim()) {
+    // shopTypeは数値（ID）なので、trim()ではなく値の存在チェック
+    if (!formData.shopType || (typeof formData.shopType === 'string' && !formData.shopType.trim())) {
       setError('お店の種類を入力してください')
       return
     }
-    if (!formData.shopName.trim()) {
+    if (!formData.shopName || (typeof formData.shopName === 'string' && !formData.shopName.trim())) {
       setError('お店の名前を入力してください')
       return
     }
@@ -379,11 +382,13 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
         shop_name: formData.shopName,
         girl_name: formData.girlName.trim() || null,
         visit_date: formData.visitDate,
-        face_rating: formData.faceRating > 0 ? formData.faceRating : null,
-        style_rating: formData.styleRating > 0 ? formData.styleRating : null,
-        service_rating: formData.serviceRating > 0 ? formData.serviceRating : null,
-        overall_rating: formData.overallRating > 0 ? formData.overallRating : null,
+        face_rating: formData.faceRating >= 1 ? formData.faceRating : null,
+        style_rating: formData.styleRating >= 1 ? formData.styleRating : null,
+        service_rating: formData.serviceRating >= 1 ? formData.serviceRating : null,
+        overall_rating: formData.overallRating >= 1 ? formData.overallRating : null,
         review: formData.review || null,
+        price: formData.price ? parseInt(formData.price, 10) : null,
+        course: formData.course?.trim() || null,
       }
 
       const response = await fetch(url, getAuthHeaders({
@@ -410,11 +415,13 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
           shopName: '',
           girlName: '',
           visitDate: getTodayString(),
-          faceRating: 0,
-          styleRating: 0,
-          serviceRating: 0,
-          overallRating: 0,
+          faceRating: 1,
+          styleRating: 1,
+          serviceRating: 1,
+          overallRating: 1,
           review: '',
+          price: '',
+          course: '',
         })
         setShopNames([])
         setIsNewShopName(false)
@@ -627,6 +634,40 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
         </div>
 
         <div className="form-group">
+          <label htmlFor="course" className="form-label">
+            コース
+          </label>
+          <input
+            type="text"
+            id="course"
+            name="course"
+            value={formData.course}
+            onChange={handleInputChange}
+            className="form-input"
+            placeholder="コースを入力（任意）"
+            disabled={isSubmitting}
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="price" className="form-label">
+            利用料金
+          </label>
+          <input
+            type="number"
+            id="price"
+            name="price"
+            value={formData.price}
+            onChange={handleInputChange}
+            className="form-input"
+            placeholder="利用料金を入力（任意）"
+            min="0"
+            step="1"
+            disabled={isSubmitting}
+          />
+        </div>
+
+        <div className="form-group">
           <label htmlFor="review" className="form-label">
             感想
           </label>
@@ -675,6 +716,8 @@ RecordForm.propTypes = {
     service_rating: PropTypes.number,
     overall_rating: PropTypes.number,
     review: PropTypes.string,
+    price: PropTypes.number,
+    course: PropTypes.string,
   }),
   onCancelEdit: PropTypes.func,
 }

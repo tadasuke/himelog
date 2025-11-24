@@ -32,11 +32,12 @@ function BottomNavigation({ user, currentPage, onNavigate }) {
       )
     },
     {
-      id: 'notifications',
-      label: '通知',
+      id: 'girls',
+      label: 'ヒメ',
       icon: (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M18 8A6 6 0 0 0 6 8C6 11.0909 4.5 13.5 3 15M18 8C18 11.0909 19.5 13.5 21 15M18 8V9C18 10.6569 19.3431 12 21 12M6 8V9C6 10.6569 4.65685 12 3 12M21 15V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V15M21 15H3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="2"/>
+          <path d="M6 21C6 17.6863 8.68629 15 12 15C15.3137 15 18 17.6863 18 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
         </svg>
       )
     },

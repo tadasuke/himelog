@@ -16,6 +16,21 @@
   color: #ffd700;
 }
 
+.star.half-filled {
+  position: relative;
+  color: #4a4a4a;
+}
+
+.star.half-filled::before {
+  content: '★';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 50%;
+  overflow: hidden;
+  color: #ffd700;
+}
+
 .star.clickable {
   cursor: pointer;
 }

@@ -70,3 +70,4 @@ class RemoveSqliteFileCommand extends Command
 }
 
 
+

@@ -1,4 +1,4 @@
-.home-container {
+.girl-list-container {
   min-height: 100vh;
   min-height: 100dvh; /* モバイルのビューポート高さに対応 */
   padding: 20px 16px;
@@ -7,122 +7,8 @@
   padding-bottom: 100px; /* ナビゲーションバーのための余白を確保 */
 }
 
-.home-header {
-  text-align: center;
-  margin-bottom: 32px;
-  padding-top: 24px;
-}
-
-.home-header-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 24px;
-  gap: 16px;
-}
-
-.home-header-top > div {
-  flex: 1;
-}
-
-.logout-btn {
-  padding: 10px 20px;
-  background: transparent;
-  border: 1px solid rgba(232, 106, 255, 0.3);
-  border-radius: 8px;
-  color: #e86aff;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  letter-spacing: 0.1px;
-  white-space: nowrap;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-
-.logout-btn:active {
-  transform: scale(0.96);
-  background: rgba(232, 106, 255, 0.1);
-  border-color: rgba(232, 106, 255, 0.5);
-}
-
-.home-title {
-  font-size: 28px;
-  font-weight: 600;
-  color: #e8e8e8;
-  margin-bottom: 8px;
-  letter-spacing: 0.3px;
-  background: linear-gradient(135deg, #e86aff 0%, #6f8cff 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  line-height: 1.2;
-}
-
-.home-subtitle {
-  font-size: 14px;
-  color: #a0a0a0;
-  letter-spacing: 0.2px;
-  line-height: 1.4;
-  margin-bottom: 24px;
-}
-
-.user-info {
-  margin-top: 24px;
-  padding: 20px;
-  background-color: #161a22;
-  border-radius: 12px;
-  border: 1px solid rgba(232, 106, 255, 0.15);
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.user-avatar {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: 2px solid rgba(232, 106, 255, 0.3);
-  object-fit: cover;
-}
-
-.user-details {
-  flex: 1;
-}
-
-.user-name {
-  font-size: 16px;
-  font-weight: 500;
-  color: #e8e8e8;
-  margin-bottom: 4px;
-  letter-spacing: 0.2px;
-}
-
-.user-id {
-  font-size: 13px;
-  color: #6f8cff;
-  margin-bottom: 2px;
-  font-family: 'Courier New', monospace;
-  letter-spacing: 0.1px;
-}
-
-.user-email {
-  font-size: 12px;
-  color: #a0a0a0;
-  letter-spacing: 0.1px;
-}
-
-.logs-section {
+.girl-list-section {
   margin-top: 32px;
-}
-
-.logs-section-title {
-  font-size: 20px;
-  font-weight: 500;
-  color: #e8e8e8;
-  margin-bottom: 20px;
-  letter-spacing: 0.2px;
 }
 
 .logs-grid {
@@ -294,6 +180,14 @@
   letter-spacing: 0.1px;
 }
 
+.log-card-rating-value {
+  font-size: 12px;
+  color: #a0a0a0;
+  font-weight: 400;
+  margin-left: 8px;
+  letter-spacing: 0.1px;
+}
+
 .log-card-price {
   display: flex;
   align-items: center;
@@ -400,107 +294,6 @@
   height: 18px;
 }
 
-.log-card-btn-edit {
-  border-color: rgba(111, 140, 255, 0.3);
-  color: #6f8cff;
-}
-
-.log-card-btn-delete {
-  border-color: rgba(255, 107, 107, 0.3);
-  color: #ff6b6b;
-}
-
-.log-card-btn-delete:hover {
-  background: rgba(255, 107, 107, 0.1);
-  border-color: rgba(255, 107, 107, 0.5);
-}
-
-.delete-confirm-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-}
-
-.delete-confirm-dialog {
-  background-color: #161a22;
-  border-radius: 16px;
-  padding: 24px;
-  border: 1px solid rgba(232, 106, 255, 0.3);
-  max-width: 400px;
-  width: 100%;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-}
-
-.delete-confirm-title {
-  font-size: 20px;
-  font-weight: 500;
-  color: #e8e8e8;
-  margin-bottom: 16px;
-  letter-spacing: 0.2px;
-}
-
-.delete-confirm-message {
-  font-size: 14px;
-  color: #a0a0a0;
-  line-height: 1.6;
-  margin-bottom: 24px;
-  letter-spacing: 0.1px;
-}
-
-.delete-confirm-buttons {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-}
-
-.delete-confirm-btn {
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  letter-spacing: 0.1px;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-  border: 1px solid;
-}
-
-.delete-confirm-btn-cancel {
-  background: transparent;
-  border-color: rgba(232, 106, 255, 0.3);
-  color: #e86aff;
-}
-
-.delete-confirm-btn-cancel:hover:not(:disabled) {
-  background: rgba(232, 106, 255, 0.1);
-  border-color: rgba(232, 106, 255, 0.5);
-}
-
-.delete-confirm-btn-delete {
-  background: rgba(255, 107, 107, 0.1);
-  border-color: rgba(255, 107, 107, 0.3);
-  color: #ff6b6b;
-}
-
-.delete-confirm-btn-delete:hover:not(:disabled) {
-  background: rgba(255, 107, 107, 0.2);
-  border-color: rgba(255, 107, 107, 0.5);
-}
-
-.delete-confirm-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .log-card-btn:active {
   transform: scale(0.96);
   background: rgba(232, 106, 255, 0.1);
@@ -509,37 +302,12 @@
 
 /* タブレット以上 */
 @media (min-width: 768px) {
-  .home-container {
+  .girl-list-container {
     padding: 40px 24px;
   }
 
-  .home-header {
-    margin-bottom: 60px;
-    padding-top: 40px;
-  }
-
-  .logout-btn:hover {
-    background: rgba(232, 106, 255, 0.1);
-    border-color: rgba(232, 106, 255, 0.5);
-    box-shadow: 0 0 12px rgba(232, 106, 255, 0.2);
-  }
-
-  .home-title {
-    font-size: 42px;
-    margin-bottom: 12px;
-  }
-
-  .home-subtitle {
-    font-size: 16px;
-  }
-
-  .logs-section {
+  .girl-list-section {
     margin-top: 60px;
-  }
-
-  .logs-section-title {
-    font-size: 24px;
-    margin-bottom: 32px;
   }
 
   .logs-grid {
@@ -640,30 +408,6 @@
     background: rgba(232, 106, 255, 0.1);
     border-color: rgba(232, 106, 255, 0.5);
     box-shadow: 0 0 12px rgba(232, 106, 255, 0.2);
-  }
-
-  .delete-confirm-dialog {
-    padding: 32px;
-    max-width: 480px;
-  }
-
-  .delete-confirm-title {
-    font-size: 24px;
-    margin-bottom: 20px;
-  }
-
-  .delete-confirm-message {
-    font-size: 15px;
-    margin-bottom: 32px;
-  }
-
-  .delete-confirm-btn {
-    padding: 12px 24px;
-    font-size: 15px;
-  }
-
-  .delete-confirm-btn:hover:not(:disabled) {
-    transform: translateY(-1px);
   }
 }
 

@@ -30,6 +30,8 @@ class StoreRecordRequest extends FormRequest
             'service_rating' => 'nullable|integer|min:1|max:10',
             'overall_rating' => 'nullable|integer|min:1|max:10',
             'review' => 'nullable|string',
+            'price' => 'nullable|integer|min:0',
+            'course' => 'nullable|string|max:255',
         ];
     }
 

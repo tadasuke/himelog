@@ -26,6 +26,8 @@ class Record extends Model
         'service_rating',
         'overall_rating',
         'review',
+        'price',
+        'course',
     ];
 
     protected $casts = [
