@@ -35,6 +35,7 @@ Route::middleware([\App\Http\Middleware\AuthenticateUser::class])->group(functio
     Route::get('/girls', [\App\Http\Controllers\GirlController::class, 'getGirl']);
     Route::get('/girls/list', [\App\Http\Controllers\GirlController::class, 'getGirlList']);
     Route::post('/girls', [\App\Http\Controllers\GirlController::class, 'createOrUpdateGirl']);
+    Route::get('/url-title', [\App\Http\Controllers\GirlController::class, 'getUrlTitle']);
     // お店の種類関連のAPI（認証必須：ユーザー別の並び順を適用するため）
     Route::get('/shop-types', [ShopTypeController::class, 'index']);
 });

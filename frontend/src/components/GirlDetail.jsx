@@ -20,6 +20,8 @@ function GirlDetail({ user, girlName, onShopClick }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isSaving, setIsSaving] = useState(false)
   const [editingRecord, setEditingRecord] = useState(null)
+  const [popupImageIndex, setPopupImageIndex] = useState(null)
+  const [urlTitles, setUrlTitles] = useState({})
 
   const fetchGirlRecords = async () => {
     if (!user?.id || !girlName) return
@@ -259,6 +261,69 @@ function GirlDetail({ user, girlName, onShopClick }) {
     setCurrentImageIndex(prev => (prev - 1 + validImageUrls.length) % validImageUrls.length)
   }
 
+  const handleImageClick = (index) => {
+    setPopupImageIndex(index)
+  }
+
+  const handleClosePopup = () => {
+    setPopupImageIndex(null)
+  }
+
+  const handlePopupNextImage = () => {
+    setPopupImageIndex(prev => (prev + 1) % validImageUrls.length)
+  }
+
+  const handlePopupPrevImage = () => {
+    setPopupImageIndex(prev => (prev - 1 + validImageUrls.length) % validImageUrls.length)
+  }
+
+  // URLのタイトルを取得する関数
+  const fetchUrlTitle = async (url) => {
+    if (!url || urlTitles[url]) return urlTitles[url]
+
+    const authToken = getAuthToken()
+    if (!authToken) {
+      return url
+    }
+
+    try {
+      const params = new URLSearchParams({
+        url: url,
+      })
+      const response = await fetch(
+        getApiUrl(`/api/url-title?${params}`),
+        getAuthHeaders()
+      )
+      
+      if (response.status === 401) {
+        handleAuthError(response)
+        return url
+      }
+      
+      const data = await response.json()
+
+      if (response.ok && data.success && data.title) {
+        setUrlTitles(prev => ({ ...prev, [url]: data.title }))
+        return data.title
+      }
+    } catch (error) {
+      console.error('Failed to fetch URL title:', error)
+    }
+    
+    return url
+  }
+
+  // URLタイトルを取得するuseEffect
+  useEffect(() => {
+    if (girl?.girl_urls && girl.girl_urls.length > 0 && !isEditing) {
+      girl.girl_urls.forEach((girlUrl) => {
+        if (girlUrl.url && !urlTitles[girlUrl.url]) {
+          fetchUrlTitle(girlUrl.url)
+        }
+      })
+    }
+  }, [girl?.girl_urls, isEditing])
+
   const handleSave = async () => {
     if (!user?.id || !girlName) return
 
@@ -432,6 +497,7 @@ function GirlDetail({ user, girlName, onShopClick }) {
                   className={`girl-detail-image ${index === currentImageIndex ? 'active' : ''}`}
                   onLoad={() => handleImageLoad(imageUrl)}
                   onError={() => handleImageError(imageUrl)}
+                  onClick={() => handleImageClick(index)}
                   style={{ display: index === currentImageIndex ? 'block' : 'none' }}
                 />
               ))}
@@ -522,7 +588,6 @@ function GirlDetail({ user, girlName, onShopClick }) {
                 
                 {girl?.girl_urls && girl.girl_urls.length > 0 && (
                   <div className="girl-detail-urls-display">
-                    <h4 className="girl-detail-urls-label">その他URL</h4>
                     <ul className="girl-detail-urls-list">
                       {girl.girl_urls.map((girlUrl, index) => (
                         <li key={girlUrl.id || index} className="girl-detail-url-item">
@@ -532,7 +597,7 @@ function GirlDetail({ user, girlName, onShopClick }) {
                             rel="noopener noreferrer"
                             className="girl-detail-url-link"
                           >
-                            {girlUrl.url}
+                            {urlTitles[girlUrl.url] || girlUrl.url}
                           </a>
                         </li>
                       ))}
@@ -820,6 +885,52 @@ function GirlDetail({ user, girlName, onShopClick }) {
         </div>
       )}
         </>
+      )}
+      {/* 画像ポップアップ */}
+      {popupImageIndex !== null && validImageUrls.length > 0 && (
+        <div className="girl-detail-image-popup-overlay" onClick={handleClosePopup}>
+          <div className="girl-detail-image-popup-container" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="girl-detail-image-popup-close"
+              onClick={handleClosePopup}
+              aria-label="閉じる"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            {validImageUrls.length > 1 && (
+              <>
+                <button
+                  className="girl-detail-image-popup-nav girl-detail-image-popup-nav-prev"
+                  onClick={handlePopupPrevImage}
+                  aria-label="前の画像"
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                <button
+                  className="girl-detail-image-popup-nav girl-detail-image-popup-nav-next"
+                  onClick={handlePopupNextImage}
+                  aria-label="次の画像"
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                <div className="girl-detail-image-popup-indicator">
+                  {popupImageIndex + 1} / {validImageUrls.length}
+                </div>
+              </>
+            )}
+            <img
+              src={validImageUrls[popupImageIndex]}
+              alt={`${girlName} ${popupImageIndex + 1}`}
+              className="girl-detail-image-popup-img"
+            />
+          </div>
+        </div>
       )}
     </div>
   )
