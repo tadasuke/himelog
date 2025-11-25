@@ -277,7 +277,15 @@ jobs:
             echo "This may be due to database connection not being available yet, continuing..."
           fi
           php artisan route:clear || { echo "Error: route:clear failed" && exit 1; }
-          php artisan view:clear || { echo "Error: view:clear failed" && exit 1; }
+          # view:clearはビューパスが見つからない場合に失敗する可能性があるため、エラーを無視して続行
+          set +e
+          php artisan view:clear
+          VIEW_CLEAR_EXIT_CODE=$?
+          set -e
+          if [ $VIEW_CLEAR_EXIT_CODE -ne 0 ]; then
+            echo "Warning: view:clear failed (exit code: $VIEW_CLEAR_EXIT_CODE)"
+            echo "This may be due to view path not being found, continuing..."
+          fi
           
           echo ""
           echo "Step 7: Running migrations"
