@@ -268,7 +268,14 @@ jobs:
           echo "Step 6: Clearing Laravel caches"
           php artisan config:clear || { echo "Error: config:clear failed" && exit 1; }
           # cache:clearはデータベース接続が必要な場合があるため、エラーを無視して続行
-          php artisan cache:clear || { echo "Warning: cache:clear failed (this may be due to database connection, continuing...)" && true; }
+          set +e
+          php artisan cache:clear
+          CACHE_CLEAR_EXIT_CODE=$?
+          set -e
+          if [ $CACHE_CLEAR_EXIT_CODE -ne 0 ]; then
+            echo "Warning: cache:clear failed (exit code: $CACHE_CLEAR_EXIT_CODE)"
+            echo "This may be due to database connection not being available yet, continuing..."
+          fi
           php artisan route:clear || { echo "Error: route:clear failed" && exit 1; }
           php artisan view:clear || { echo "Error: view:clear failed" && exit 1; }
           
