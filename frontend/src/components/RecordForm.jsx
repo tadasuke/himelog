@@ -683,11 +683,6 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
           />
         </div>
 
-        {error && (
-          <div className="form-error">
-            {error}
-          </div>
-        )}
 
         <button
           type="submit"

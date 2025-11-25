@@ -97,8 +97,7 @@ class ShopTypeController extends Controller
                 'user_id' => $userId ?? null,
             ]);
             $result = response()->json([
-                'error' => 'Failed to fetch shop types',
-                'message' => $e->getMessage()
+                'error' => 'Failed to fetch shop types'
             ], 500);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
             return $result;

@@ -68,14 +68,14 @@ return [
 
         'command' => [
             'driver' => 'single',
-            'path' => storage_path('logs/command.log'),
+            'path' => storage_path('logs/artisan.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
         ],
 
         'api' => [
             'driver' => 'single',
-            'path' => storage_path('logs/api.log'),
+            'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
         ],

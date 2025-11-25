@@ -12,6 +12,15 @@ dist
 dist-ssr
 *.local
 
+# Environment variables
+# .env と .env.local は除外（個人用設定）
+.env
+.env.local
+.env.*.local
+# .env.development と .env.production はリポジトリに含める
+!.env.development
+!.env.production
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

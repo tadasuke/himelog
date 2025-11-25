@@ -79,8 +79,7 @@ class AuthController extends Controller
         } catch (\Exception $e) {
             Log::error('Google callback error: ' . $e->getMessage());
             $result = response()->json([
-                'error' => 'Authentication failed',
-                'message' => $e->getMessage()
+                'error' => 'Authentication failed'
             ], 401);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
             return $result;
@@ -201,7 +200,6 @@ class AuthController extends Controller
             ]);
             $result = response()->json([
                 'error' => 'Authentication failed',
-                'message' => $e->getMessage(),
                 'loggedIn' => false
             ], 401);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
@@ -287,7 +285,6 @@ class AuthController extends Controller
                 ]);
                 return response()->json([
                     'error' => 'Token exchange failed',
-                    'message' => $errorJson['error_description'] ?? $errorJson['error'] ?? 'Unknown error',
                     'loggedIn' => false
                 ], 401);
             }
@@ -327,16 +324,14 @@ class AuthController extends Controller
                 
                 // レート制限エラーの場合
                 if (strpos($e->getMessage(), 'rate limit') !== false) {
-                    return response()->json([
-                        'error' => 'Rate limit exceeded',
-                        'message' => 'X APIのレート制限に達しました。しばらく待ってから再度お試しください。',
-                        'loggedIn' => false
-                    ], 429);
+                return response()->json([
+                    'error' => 'Rate limit exceeded',
+                    'loggedIn' => false
+                ], 429);
                 }
                 
                 return response()->json([
                     'error' => 'User verification failed',
-                    'message' => $e->getMessage(),
                     'loggedIn' => false
                 ], 401);
             }
@@ -393,7 +388,6 @@ class AuthController extends Controller
             ]);
             $result = response()->json([
                 'error' => 'Authentication failed',
-                'message' => $e->getMessage(),
                 'loggedIn' => false
             ], 401);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
@@ -472,7 +466,6 @@ class AuthController extends Controller
             ]);
             $result = response()->json([
                 'error' => 'Authentication failed',
-                'message' => $e->getMessage(),
                 'loggedIn' => false
             ], 401);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
@@ -543,7 +536,6 @@ class AuthController extends Controller
                 ]);
                 return response()->json([
                     'error' => 'Token refresh failed',
-                    'message' => $errorJson['error_description'] ?? $errorJson['error'] ?? 'Unknown error',
                     'loggedIn' => false
                 ], 401);
             }
@@ -578,7 +570,6 @@ class AuthController extends Controller
             ]);
             $result = response()->json([
                 'error' => 'Token refresh failed',
-                'message' => $e->getMessage(),
                 'loggedIn' => false
             ], 401);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);

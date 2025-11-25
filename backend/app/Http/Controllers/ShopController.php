@@ -61,8 +61,7 @@ class ShopController extends Controller
         } catch (\Exception $e) {
             Log::error('Shop fetch error: ' . $e->getMessage());
             $result = response()->json([
-                'error' => 'Failed to fetch shop',
-                'message' => $e->getMessage()
+                'error' => 'Failed to fetch shop'
             ], 500);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
             return $result;
@@ -115,8 +114,7 @@ class ShopController extends Controller
         } catch (\Exception $e) {
             Log::error('Shop create or update error: ' . $e->getMessage());
             $result = response()->json([
-                'error' => 'Failed to create or update shop',
-                'message' => $e->getMessage()
+                'error' => 'Failed to create or update shop'
             ], 500);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
             return $result;

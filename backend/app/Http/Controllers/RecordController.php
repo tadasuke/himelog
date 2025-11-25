@@ -49,8 +49,7 @@ class RecordController extends Controller
         } catch (\Exception $e) {
             Log::error('Record creation error: ' . $e->getMessage());
             $result = response()->json([
-                'error' => 'Failed to create record',
-                'message' => $e->getMessage()
+                'error' => 'Failed to create record'
             ], 500);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
             return $result;
@@ -84,8 +83,7 @@ class RecordController extends Controller
         } catch (\Exception $e) {
             Log::error('Record fetch error: ' . $e->getMessage());
             $result = response()->json([
-                'error' => 'Failed to fetch records',
-                'message' => $e->getMessage()
+                'error' => 'Failed to fetch records'
             ], 500);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
             return $result;
@@ -127,8 +125,7 @@ class RecordController extends Controller
         } catch (\Exception $e) {
             Log::error('Shop names fetch error: ' . $e->getMessage());
             $result = response()->json([
-                'error' => 'Failed to fetch shop names',
-                'message' => $e->getMessage()
+                'error' => 'Failed to fetch shop names'
             ], 500);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
             return $result;
@@ -182,8 +179,7 @@ class RecordController extends Controller
                 'line' => $e->getLine(),
             ]);
             $result = response()->json([
-                'error' => 'Failed to fetch girl names',
-                'message' => $e->getMessage()
+                'error' => 'Failed to fetch girl names'
             ], 500);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
             return $result;
@@ -217,8 +213,7 @@ class RecordController extends Controller
         } catch (\Exception $e) {
             Log::error('All girl names fetch error: ' . $e->getMessage());
             $result = response()->json([
-                'error' => 'Failed to fetch girl names',
-                'message' => $e->getMessage()
+                'error' => 'Failed to fetch girl names'
             ], 500);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
             return $result;
@@ -252,8 +247,7 @@ class RecordController extends Controller
         } catch (\Exception $e) {
             Log::error('Shops fetch error: ' . $e->getMessage());
             $result = response()->json([
-                'error' => 'Failed to fetch shops',
-                'message' => $e->getMessage()
+                'error' => 'Failed to fetch shops'
             ], 500);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
             return $result;
@@ -289,8 +283,7 @@ class RecordController extends Controller
             } catch (\Exception $e) {
                 if ($e->getMessage() === 'この記録を更新する権限がありません') {
                     return response()->json([
-                        'error' => 'Forbidden',
-                        'message' => $e->getMessage()
+                        'error' => 'Forbidden'
                     ], 403);
                 }
                 throw $e;
@@ -305,8 +298,7 @@ class RecordController extends Controller
         } catch (\Exception $e) {
             Log::error('Record update error: ' . $e->getMessage());
             $result = response()->json([
-                'error' => 'Failed to update record',
-                'message' => $e->getMessage()
+                'error' => 'Failed to update record'
             ], 500);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
             return $result;
@@ -355,8 +347,7 @@ class RecordController extends Controller
         } catch (\Exception $e) {
             Log::error('Shop records fetch error: ' . $e->getMessage());
             $result = response()->json([
-                'error' => 'Failed to fetch shop records',
-                'message' => $e->getMessage()
+                'error' => 'Failed to fetch shop records'
             ], 500);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
             return $result;
@@ -398,8 +389,7 @@ class RecordController extends Controller
         } catch (\Exception $e) {
             Log::error('Girl records fetch error: ' . $e->getMessage());
             $result = response()->json([
-                'error' => 'Failed to fetch girl records',
-                'message' => $e->getMessage()
+                'error' => 'Failed to fetch girl records'
             ], 500);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
             return $result;
@@ -435,8 +425,7 @@ class RecordController extends Controller
             } catch (\Exception $e) {
                 if ($e->getMessage() === 'この記録を削除する権限がありません') {
                     return response()->json([
-                        'error' => 'Forbidden',
-                        'message' => $e->getMessage()
+                        'error' => 'Forbidden'
                     ], 403);
                 }
                 throw $e;
@@ -451,7 +440,210 @@ class RecordController extends Controller
         } catch (\Exception $e) {
             Log::error('Record deletion error: ' . $e->getMessage());
             $result = response()->json([
-                'error' => 'Failed to delete record',
+                'error' => 'Failed to delete record'
+            ], 500);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        }
+    }
+
+    /**
+     * レビューを公開（HTML生成とS3アップロード）
+     */
+    public function publish(Request $request, string $id): JsonResponse
+    {
+        $this->logMethodStart(__FUNCTION__, ['id' => $id], __FILE__, __LINE__);
+        try {
+            // 認証されたユーザーIDを取得
+            $authenticatedUserId = $request->input('authenticated_user_id');
+            if (!$authenticatedUserId) {
+                return response()->json([
+                    'error' => 'Unauthorized',
+                    'message' => '認証が必要です'
+                ], 401);
+            }
+
+            $record = Record::find($id);
+            
+            if (!$record) {
+                return response()->json([
+                    'error' => 'Record not found'
+                ], 404);
+            }
+
+            // 公開オプションを取得（デフォルトはtrue）
+            $includeShopName = filter_var($request->input('include_shop_name', true), FILTER_VALIDATE_BOOLEAN);
+            $includeGirlName = filter_var($request->input('include_girl_name', true), FILTER_VALIDATE_BOOLEAN);
+            $publicReview = $request->input('public_review', '');
+
+            try {
+                $publicUrl = $this->recordService->publishRecord(
+                    $record, 
+                    $authenticatedUserId,
+                    $includeShopName,
+                    $includeGirlName,
+                    $publicReview
+                );
+            } catch (\Exception $e) {
+                if ($e->getMessage() === 'この記録を公開する権限がありません') {
+                    return response()->json([
+                        'error' => 'Forbidden'
+                    ], 403);
+                }
+                throw $e;
+            }
+
+            $result = response()->json([
+                'success' => true,
+                'public_url' => $publicUrl,
+                'public_token' => $record->public_token
+            ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('Record publish error: ' . $e->getMessage());
+            $result = response()->json([
+                'error' => 'Failed to publish record'
+            ], 500);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        }
+    }
+
+    /**
+     * 公開URLを取得
+     */
+    public function getPublicUrl(Request $request, string $id): JsonResponse
+    {
+        $this->logMethodStart(__FUNCTION__, ['id' => $id], __FILE__, __LINE__);
+        try {
+            // 認証されたユーザーIDを取得
+            $authenticatedUserId = $request->input('authenticated_user_id');
+            if (!$authenticatedUserId) {
+                return response()->json([
+                    'error' => 'Unauthorized',
+                    'message' => '認証が必要です'
+                ], 401);
+            }
+
+            $record = Record::find($id);
+            
+            if (!$record) {
+                return response()->json([
+                    'error' => 'Record not found'
+                ], 404);
+            }
+
+            // 所有者チェック
+            if ($record->user_id !== $authenticatedUserId) {
+                return response()->json([
+                    'error' => 'Forbidden',
+                    'message' => 'この記録の公開URLを取得する権限がありません'
+                ], 403);
+            }
+
+            // 公開されていない場合
+            if (!$record->public_token) {
+                return response()->json([
+                    'success' => true,
+                    'is_published' => false,
+                    'public_url' => null
+                ]);
+            }
+
+            // 公開URLを生成
+            $s3Service = new \App\Services\S3Service();
+            $filename = $record->public_token . '.html';
+            
+            // PUBLIC_REVIEW_BASE_URL環境変数が設定されている場合はそれを使用
+            $publicBaseUrl = env('PUBLIC_REVIEW_BASE_URL');
+            if ($publicBaseUrl) {
+                $publicUrl = rtrim($publicBaseUrl, '/') . '/public-reviews/' . $filename;
+            } else if ($s3Service->isLocalEnvironment()) {
+                // ローカル環境の場合
+                $appUrl = env('APP_URL', 'http://localhost:8000');
+                if (!str_contains($appUrl, ':8000') && str_contains($appUrl, 'localhost')) {
+                    $appUrl = str_replace('http://localhost', 'http://localhost:8000', $appUrl);
+                }
+                $publicUrl = rtrim($appUrl, '/') . '/public-reviews/' . $filename;
+            } else {
+                // 本番環境の場合
+                $cloudFrontUrl = $s3Service->getCloudFrontUrl();
+                if ($cloudFrontUrl) {
+                    $publicUrl = rtrim($cloudFrontUrl, '/') . '/public-reviews/' . $filename;
+                } else {
+                    // S3 URLを生成
+                    $bucket = env('AWS_S3_BUCKET', '');
+                    $region = env('AWS_DEFAULT_REGION', 'ap-northeast-1');
+                    $publicUrl = "https://{$bucket}.s3.{$region}.amazonaws.com/public-reviews/{$filename}";
+                }
+            }
+
+            $result = response()->json([
+                'success' => true,
+                'is_published' => true,
+                'public_url' => $publicUrl,
+                'public_token' => $record->public_token
+            ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('Get public URL error: ' . $e->getMessage());
+            $result = response()->json([
+                'error' => 'Failed to get public URL',
+                'message' => $e->getMessage()
+            ], 500);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        }
+    }
+
+    /**
+     * 公開ページを削除
+     */
+    public function unpublish(Request $request, string $id): JsonResponse
+    {
+        $this->logMethodStart(__FUNCTION__, ['id' => $id], __FILE__, __LINE__);
+        try {
+            // 認証されたユーザーIDを取得
+            $authenticatedUserId = $request->input('authenticated_user_id');
+            if (!$authenticatedUserId) {
+                return response()->json([
+                    'error' => 'Unauthorized',
+                    'message' => '認証が必要です'
+                ], 401);
+            }
+
+            $record = Record::find($id);
+            
+            if (!$record) {
+                return response()->json([
+                    'error' => 'Record not found'
+                ], 404);
+            }
+
+            try {
+                $this->recordService->unpublishRecord($record, $authenticatedUserId);
+            } catch (\Exception $e) {
+                if ($e->getMessage() === 'この記録の公開を削除する権限がありません') {
+                    return response()->json([
+                        'error' => 'Forbidden',
+                        'message' => $e->getMessage()
+                    ], 403);
+                }
+                throw $e;
+            }
+
+            $result = response()->json([
+                'success' => true,
+                'message' => '公開ページを削除しました'
+            ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('Record unpublish error: ' . $e->getMessage());
+            $result = response()->json([
+                'error' => 'Failed to unpublish record',
                 'message' => $e->getMessage()
             ], 500);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);

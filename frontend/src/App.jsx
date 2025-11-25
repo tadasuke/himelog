@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Login from './components/Login'
 import Home from './components/Home'
 import MyPage from './components/MyPage'
@@ -108,7 +108,7 @@ function App() {
     }
   }, [])
 
-  const handleGoogleLogin = async (credential) => {
+  const handleGoogleLogin = useCallback(async (credential) => {
     try {
       console.log('Sending token to backend...', { tokenLength: credential?.length })
       const response = await fetch(getApiUrl('/api/auth/google/login'), {
@@ -171,7 +171,10 @@ function App() {
       console.error('Login error:', error)
       alert(`ログイン中にエラーが発生しました: ${error.message}`)
     }
-  }
+  }, [])
+
+  // popupモードでは、リダイレクト後のコールバック処理は不要
+  // コールバックは直接Loginコンポーネントのinitializeのcallbackで処理される
 
   const handleXLogin = async (accessToken) => {
     try {

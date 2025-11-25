@@ -65,13 +65,10 @@ function ShopList({ user, onShopClick }) {
       {isLoading && (
         <div className="loading-message">読み込み中...</div>
       )}
-      {error && (
-        <div className="error-message">{error}</div>
-      )}
-      {!isLoading && !error && shops.length === 0 && (
+      {!isLoading && shops.length === 0 && (
         <div className="empty-message">まだお店が登録されていません。</div>
       )}
-      {!isLoading && !error && shops.length > 0 && (
+      {!isLoading && shops.length > 0 && (
         <div className="shop-list-content">
           <ul className="shop-name-list">
             {shops.map((shop, index) => {

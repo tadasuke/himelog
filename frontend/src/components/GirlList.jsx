@@ -65,13 +65,10 @@ function GirlList({ user, onShopClick, onGirlClick }) {
         {isLoading && (
           <div className="loading-message">読み込み中...</div>
         )}
-        {error && (
-          <div className="error-message">{error}</div>
-        )}
-        {!isLoading && !error && girls.length === 0 && (
+        {!isLoading && girls.length === 0 && (
           <div className="empty-message">まだヒメの記録がありません。新しい記録を登録してください。</div>
         )}
-        {!isLoading && !error && girls.length > 0 && (
+        {!isLoading && girls.length > 0 && (
           <div className="logs-grid">
             {girls.map((girl) => {
               return (

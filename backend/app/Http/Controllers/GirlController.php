@@ -54,8 +54,7 @@ class GirlController extends Controller
         } catch (\Exception $e) {
             Log::error('Girl fetch error: ' . $e->getMessage());
             $result = response()->json([
-                'error' => 'Failed to fetch girl',
-                'message' => $e->getMessage()
+                'error' => 'Failed to fetch girl'
             ], 500);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
             return $result;
@@ -109,8 +108,7 @@ class GirlController extends Controller
         } catch (\Exception $e) {
             Log::error('Girl create or update error: ' . $e->getMessage());
             $result = response()->json([
-                'error' => 'Failed to create or update girl',
-                'message' => $e->getMessage()
+                'error' => 'Failed to create or update girl'
             ], 500);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
             return $result;
@@ -144,8 +142,7 @@ class GirlController extends Controller
         } catch (\Exception $e) {
             Log::error('Girl list fetch error: ' . $e->getMessage());
             $result = response()->json([
-                'error' => 'Failed to fetch girl list',
-                'message' => $e->getMessage()
+                'error' => 'Failed to fetch girl list'
             ], 500);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
             return $result;
@@ -195,8 +192,7 @@ class GirlController extends Controller
         } catch (\Exception $e) {
             Log::error('URL title fetch error: ' . $e->getMessage());
             $result = response()->json([
-                'error' => 'Failed to fetch URL title',
-                'message' => $e->getMessage()
+                'error' => 'Failed to fetch URL title'
             ], 500);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
             return $result;

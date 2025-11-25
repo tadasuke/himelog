@@ -24,5 +24,9 @@ export default defineConfig({
         },
       },
     },
+    // SPAのルーティングをサポート（すべてのルートをindex.htmlにリダイレクト）
+    // Viteはデフォルトでこれをサポートしているが、明示的に設定
+    strictPort: false,
+    open: false,
   },
 })

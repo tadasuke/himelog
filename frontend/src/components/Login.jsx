@@ -8,6 +8,10 @@ function Login({ onGoogleLogin, onXLogin }) {
   const googleButtonRef = useRef(null)
   const [isXLoading, setIsXLoading] = useState(false)
   const xCallbackProcessed = useRef(false)
+  const googleCallbackProcessed = useRef(false)
+
+  // popupモードでは、リダイレクト後のコールバック処理は不要
+  // コールバックは直接initializeのcallbackで処理される
 
   useEffect(() => {
     // Google Identity Services が読み込まれるまで待つ
@@ -16,19 +20,28 @@ function Login({ onGoogleLogin, onXLogin }) {
       
       if (!clientId) {
         console.error('VITE_GOOGLE_CLIENT_ID is not set. Please check your .env file.')
-        if (googleButtonRef.current) {
-          googleButtonRef.current.innerHTML = '<p style="color: #ff6b6b; text-align: center; padding: 12px;">Google Client ID が設定されていません</p>'
-        }
+        // エラーメッセージは画面に表示しない
         return
       }
 
       if (window.google && googleButtonRef.current) {
         try {
+          // デバッグ情報を出力
+          const currentUrl = window.location.href
+          const origin = window.location.origin
+          const pathname = window.location.pathname
+          console.log('Google Sign-In initialization:', {
+            currentUrl,
+            origin,
+            pathname,
+            clientId: clientId.substring(0, 20) + '...'
+          })
+
           window.google.accounts.id.initialize({
             client_id: clientId,
-            ux_mode: 'popup', // ポップアップモードを明示的に指定
-            use_fedcm_for_prompt: true, // FedCM APIを使用（対応ブラウザのみ）
+            ux_mode: 'popup', // ポップアップモードを使用
             callback: (response) => {
+              // ポップアップモードでは、このコールバックが直接呼ばれる
               if (response.credential) {
                 onGoogleLogin(response.credential)
               } else {
@@ -37,12 +50,7 @@ function Login({ onGoogleLogin, onXLogin }) {
             },
             error_callback: (error) => {
               console.error('Google Sign-In error:', error)
-              if (googleButtonRef.current) {
-                const errorMessage = error.type === 'popup_closed_by_user' 
-                  ? 'ログインがキャンセルされました'
-                  : `認証エラーが発生しました: ${error.type || '不明なエラー'}`
-                googleButtonRef.current.innerHTML = `<p style="color: #ff6b6b; text-align: center; padding: 12px;">${errorMessage}</p>`
-              }
+              // エラーメッセージは画面に表示しない
             },
           })
 
@@ -54,26 +62,13 @@ function Login({ onGoogleLogin, onXLogin }) {
               width: '100%',
               text: 'signin_with',
               locale: 'ja',
-              ux_mode: 'popup', // ポップアップモードを明示的に指定
             }
           )
         } catch (error) {
           console.error('Error initializing Google Sign-In:', error)
           console.error('現在のURL:', window.location.origin)
           console.error('Client ID:', clientId)
-          if (googleButtonRef.current) {
-            const errorHtml = `
-              <div style="color: #ff6b6b; text-align: center; padding: 12px;">
-                <p style="margin-bottom: 8px;">Google認証の初期化に失敗しました</p>
-                <p style="font-size: 12px; color: #a0a0a0; margin-top: 8px;">
-                  403エラーの場合、Google Cloud Consoleで以下を確認してください:<br/>
-                  1. 「承認済みのJavaScript生成元」に ${window.location.origin} が追加されているか<br/>
-                  2. OAuth同意画面が正しく設定されているか
-                </p>
-              </div>
-            `
-            googleButtonRef.current.innerHTML = errorHtml
-          }
+          // エラーメッセージは画面に表示しない
         }
       }
     }
@@ -92,20 +87,7 @@ function Login({ onGoogleLogin, onXLogin }) {
       // 10秒後にタイムアウト
       setTimeout(() => {
         clearInterval(checkInterval)
-        if (!window.google && googleButtonRef.current) {
-          const errorHtml = `
-            <div style="color: #ff6b6b; text-align: center; padding: 12px;">
-              <p style="margin-bottom: 8px;">Google Identity Services の読み込みに失敗しました</p>
-              <p style="font-size: 12px; color: #a0a0a0; margin-top: 8px;">
-                403エラーの場合、Google Cloud Consoleで以下を確認してください:<br/>
-                1. 「承認済みのJavaScript生成元」に ${window.location.origin} が追加されているか<br/>
-                2. OAuth同意画面が正しく設定されているか<br/>
-                3. ブラウザのコンソールでエラー詳細を確認してください
-              </p>
-            </div>
-          `
-          googleButtonRef.current.innerHTML = errorHtml
-        }
+        // エラーメッセージは画面に表示しない
       }, 10000)
     }
 
@@ -135,7 +117,7 @@ function Login({ onGoogleLogin, onXLogin }) {
 
       if (error) {
         console.error('X auth error:', error)
-        alert(`X認証に失敗しました: ${error}`)
+        // エラーメッセージは画面に表示しない
         xCallbackProcessed.current = true
         return
       }
@@ -150,7 +132,7 @@ function Login({ onGoogleLogin, onXLogin }) {
 
         if (!savedState || savedState !== state || !codeVerifier) {
           console.error('X auth: Invalid state or missing code_verifier')
-          alert('X認証に失敗しました: 無効なリクエスト')
+          // エラーメッセージは画面に表示しない
           return
         }
 
@@ -221,7 +203,7 @@ function Login({ onGoogleLogin, onXLogin }) {
           }
         } catch (error) {
           console.error('X auth callback error:', error)
-          alert(`X認証に失敗しました: ${error.message}`)
+          // エラーメッセージは画面に表示しない
           // クリーンアップ
           localStorage.removeItem('x_auth_state')
           localStorage.removeItem('x_code_verifier')
@@ -243,7 +225,8 @@ function Login({ onGoogleLogin, onXLogin }) {
       const clientId = import.meta.env.VITE_X_CLIENT_ID || ''
       
       if (!clientId) {
-        alert('X Client ID が設定されていません')
+        console.error('X Client ID が設定されていません')
+        // エラーメッセージは画面に表示しない
         setIsXLoading(false)
         return
       }
@@ -265,7 +248,7 @@ function Login({ onGoogleLogin, onXLogin }) {
       window.location.href = authUrl
     } catch (error) {
       console.error('X login error:', error)
-      alert(`X認証の開始に失敗しました: ${error.message}`)
+      // エラーメッセージは画面に表示しない
       setIsXLoading(false)
     }
   }

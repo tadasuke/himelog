@@ -16,6 +16,7 @@ class Record extends Model
 
     protected $fillable = [
         'id',
+        'public_token',
         'user_id',
         'shop_type_id',
         'shop_name',
@@ -97,5 +98,32 @@ class Record extends Model
                 $model->id = (string) Str::uuid();
             }
         });
+    }
+
+    /**
+     * 公開用トークンを生成（4文字の数字+小文字）
+     */
+    public function generatePublicToken(): string
+    {
+        $chars = '0123456789abcdefghijklmnopqrstuvwxyz'; // 36文字（数字+小文字）
+        do {
+            $token = '';
+            for ($i = 0; $i < 4; $i++) {
+                $token .= $chars[random_int(0, 35)];
+            }
+        } while (self::where('public_token', $token)->exists());
+
+        $this->public_token = $token;
+        $this->save();
+
+        return $token;
+    }
+
+    /**
+     * 公開用トークンでレコードを取得
+     */
+    public static function findByPublicToken(string $token): ?self
+    {
+        return self::where('public_token', $token)->first();
     }
 }

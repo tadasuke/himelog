@@ -1,18 +1,35 @@
 /**
  * APIエンドポイントのベースURLを取得
- * localhost または 127.0.0.1 の場合は相対パスを使用
- * それ以外の場合は https://4zklqklybqhu.madfaction.net を使用
+ * 優先順位:
+ * 1. 環境変数 VITE_API_BASE_URL が設定されている場合はそれを使用
+ * 2. localhost または 127.0.0.1 の場合は相対パスを使用（Viteのプロキシを使用）
+ * 環境変数が設定されていない場合はエラーをスロー
  */
 export const getApiBaseUrl = () => {
   const hostname = window.location.hostname
   
-  // localhost または 127.0.0.1 の場合は相対パスを使用
+  // localhost または 127.0.0.1 の場合は相対パスを使用（Viteのプロキシが動作）
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    // ローカル環境でも環境変数が設定されている場合はそれを使用
+    if (import.meta.env.VITE_API_BASE_URL) {
+      return import.meta.env.VITE_API_BASE_URL
+    }
+    // 環境変数が設定されていない場合は相対パスを使用
     return ''
   }
   
-  // それ以外の場合は本番環境のAPIドメインを使用
-  return 'https://4zklqklybqhu.madfaction.net'
+  // 環境変数でAPIベースURLが設定されている場合はそれを使用
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL
+  }
+  
+  // 環境変数が設定されていない場合は警告を表示してエラーをスロー
+  console.error(
+    'VITE_API_BASE_URL is not set. Please configure it in .env, .env.development, or .env.production file.'
+  )
+  throw new Error(
+    'VITE_API_BASE_URL is not set. Please configure it in .env, .env.development, or .env.production file.'
+  )
 }
 
 /**

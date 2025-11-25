@@ -27,6 +27,9 @@ Route::middleware([\App\Http\Middleware\AuthenticateUser::class])->group(functio
     Route::get('/records', [RecordController::class, 'index']);
     Route::put('/records/{id}', [RecordController::class, 'update']);
     Route::delete('/records/{id}', [RecordController::class, 'destroy']);
+    Route::post('/records/{id}/publish', [RecordController::class, 'publish']);
+    Route::delete('/records/{id}/publish', [RecordController::class, 'unpublish']);
+    Route::get('/records/{id}/public-url', [RecordController::class, 'getPublicUrl']);
     Route::get('/records/shop-names', [RecordController::class, 'getShopNames']);
     Route::get('/records/girl-names', [RecordController::class, 'getGirlNames']);
     Route::get('/records/all-girl-names', [RecordController::class, 'getAllGirlNames']);
