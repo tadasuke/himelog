@@ -22,6 +22,8 @@ function Login({ onGoogleLogin }) {
         try {
           window.google.accounts.id.initialize({
             client_id: clientId,
+            ux_mode: 'popup', // ポップアップモードを明示的に指定
+            use_fedcm_for_prompt: true, // FedCM APIを使用（対応ブラウザのみ）
             callback: (response) => {
               if (response.credential) {
                 onGoogleLogin(response.credential)
@@ -48,6 +50,7 @@ function Login({ onGoogleLogin }) {
               width: '100%',
               text: 'signin_with',
               locale: 'ja',
+              ux_mode: 'popup', // ポップアップモードを明示的に指定
             }
           )
         } catch (error) {

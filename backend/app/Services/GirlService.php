@@ -150,6 +150,19 @@ class GirlService
             // 登録回数を取得
             $recordCount = $girlRecords->count();
 
+            // ヒメの画像URL（1枚目のみ）を取得
+            $firstImageUrl = null;
+            $girl = Girl::where('user_id', $userId)
+                ->where('girl_name', $girlName)
+                ->with(['girlImageUrls' => function ($query) {
+                    $query->orderBy('display_order')->limit(1);
+                }])
+                ->first();
+            
+            if ($girl && $girl->girlImageUrls && $girl->girlImageUrls->count() > 0) {
+                $firstImageUrl = $girl->girlImageUrls->first()->image_url;
+            }
+
             $girlList[] = [
                 'girl_name' => $girlName,
                 'shop_type' => $latestRecord->shop_type, // アクセサで取得
@@ -157,6 +170,7 @@ class GirlService
                 'last_registered_at' => $lastRegisteredAt,
                 'average_overall_rating' => $averageRating,
                 'record_count' => $recordCount,
+                'first_image_url' => $firstImageUrl,
             ];
         }
 

@@ -84,35 +84,51 @@ function GirlList({ user, onShopClick, onGirlClick }) {
                     }
                   }}
                 >
-                  <div className="log-card-header">
-                    <div className="log-card-shop">
-                      <span className="log-card-shop-type">
-                        {girl.shop_type || ''}
-                      </span>
-                      <span className="log-card-shop-name">
-                        {girl.shop_name}
-                      </span>
-                    </div>
-                    <span className="log-card-date">
-                      {formatDate(girl.last_registered_at)}
-                    </span>
-                  </div>
-                  <div className="log-card-info">
-                    <h3 className="log-card-title">
-                      {girl.girl_name}
-                    </h3>
-                  </div>
-                  <div className="log-card-ratings">
-                    <div className="log-card-rating-item">
-                      <span className="log-card-rating-label">会った回数</span>
-                      <span className="log-card-rating-value">{girl.record_count || 0}回</span>
-                    </div>
-                    <div className="log-card-rating-item">
-                      <span className="log-card-rating-label">総合</span>
-                      <StarRating rating={girl.average_overall_rating || 0} readonly={true} />
-                      {girl.average_overall_rating !== null && (
-                        <span className="log-card-rating-value">({girl.average_overall_rating})</span>
-                      )}
+                  <div className="girl-list-card-content">
+                    {girl.first_image_url && (
+                      <div className="girl-list-image-container">
+                        <img
+                          src={girl.first_image_url}
+                          alt={girl.girl_name}
+                          className="girl-list-image"
+                          onError={(e) => {
+                            e.target.style.display = 'none'
+                          }}
+                        />
+                      </div>
+                    )}
+                    <div className="girl-list-card-body">
+                      <div className="log-card-header">
+                        <div className="log-card-shop">
+                          <span className="log-card-shop-type">
+                            {girl.shop_type || ''}
+                          </span>
+                          <span className="log-card-shop-name">
+                            {girl.shop_name}
+                          </span>
+                        </div>
+                        <span className="log-card-date">
+                          {formatDate(girl.last_registered_at)}
+                        </span>
+                      </div>
+                      <div className="log-card-info">
+                        <h3 className="log-card-title">
+                          {girl.girl_name}
+                        </h3>
+                      </div>
+                      <div className="log-card-ratings">
+                        <div className="log-card-rating-item">
+                          <span className="log-card-rating-label">会った回数</span>
+                          <span className="log-card-rating-value">{girl.record_count || 0}回</span>
+                        </div>
+                        <div className="log-card-rating-item">
+                          <span className="log-card-rating-label">総合</span>
+                          <StarRating rating={girl.average_overall_rating || 0} readonly={true} />
+                          {girl.average_overall_rating !== null && (
+                            <span className="log-card-rating-value">({girl.average_overall_rating})</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

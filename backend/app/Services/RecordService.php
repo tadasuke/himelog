@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Record;
 use App\Models\ShopType;
+use App\Models\Girl;
 use Illuminate\Support\Facades\Log;
 
 class RecordService
@@ -60,13 +61,34 @@ class RecordService
 
     /**
      * ユーザーの記録一覧を取得
+     * 各記録にヒメの画像URL（最初の1枚目）を含める
      */
     public function getRecords(string $userId)
     {
-        return Record::where('user_id', $userId)
+        $records = Record::where('user_id', $userId)
             ->with('shopType')
             ->orderBy('created_at', 'desc')
             ->get();
+
+        // 各記録にヒメの画像URL（最初の1枚目）を追加
+        foreach ($records as $record) {
+            $girlImageUrl = null;
+            if ($record->girl_name) {
+                $girl = Girl::where('user_id', $userId)
+                    ->where('girl_name', $record->girl_name)
+                    ->with(['girlImageUrls' => function ($query) {
+                        $query->orderBy('display_order')->limit(1);
+                    }])
+                    ->first();
+                
+                if ($girl && $girl->girlImageUrls && $girl->girlImageUrls->count() > 0) {
+                    $girlImageUrl = $girl->girlImageUrls->first()->image_url;
+                }
+            }
+            $record->girl_image_url = $girlImageUrl;
+        }
+
+        return $records;
     }
 
     /**
@@ -173,8 +195,9 @@ class RecordService
     }
 
     /**
-     * ユーザーが登録した全お店の一覧を取得（shop_typeごとにグループ化）
-     * 各お店について利用回数と総合評価の平均を含める
+     * ユーザーが登録した全お店の一覧を取得
+     * 各お店について利用回数、総合評価の平均、最終利用日を含める
+     * 最終利用日の降順でソート
      */
     public function getShops(string $userId): array
     {
@@ -182,55 +205,101 @@ class RecordService
             ->with('shopType')
             ->get();
 
-        $shops = $records
-            ->groupBy(function ($record) {
-                return $record->shop_type; // アクセサで取得したshop_type（名前）でグループ化
-            })
-            ->map(function ($group) use ($userId) {
-                return $group
-                    ->groupBy('shop_name')
-                    ->map(function ($shopRecords) {
-                        $visitCount = $shopRecords->count();
-                        $ratings = $shopRecords
-                            ->pluck('overall_rating')
-                            ->filter(function ($rating) {
-                                return $rating !== null && $rating > 0;
-                            });
-                        
-                        $averageRating = $ratings->count() > 0 
-                            ? round($ratings->avg(), 1) 
-                            : 0;
+        $shopsMap = [];
+        
+        // お店ごとにグループ化（shop_type_idとshop_nameの組み合わせで一意に識別）
+        $groupedRecords = $records->groupBy(function ($record) {
+            return $record->shop_type_id . '_' . $record->shop_name;
+        });
 
-                        return [
-                            'name' => $shopRecords->first()->shop_name,
-                            'visit_count' => $visitCount,
-                            'average_rating' => $averageRating,
-                        ];
-                    })
-                    ->values()
-                    ->sortBy('name')
-                    ->values()
-                    ->toArray();
-            })
-            ->toArray();
+        foreach ($groupedRecords as $shopRecords) {
+            $firstRecord = $shopRecords->first();
+            $visitCount = $shopRecords->count();
+            
+            $ratings = $shopRecords
+                ->pluck('overall_rating')
+                ->filter(function ($rating) {
+                    return $rating !== null && $rating > 0;
+                });
+            
+            $averageRating = $ratings->count() > 0 
+                ? round($ratings->avg(), 1) 
+                : 0;
+
+            // 最終利用日を取得（visit_dateが存在する場合はそれを使用、なければcreated_atを使用）
+            $lastVisitDate = $shopRecords
+                ->map(function ($record) {
+                    return $record->visit_date ? $record->visit_date->format('Y-m-d') : $record->created_at->format('Y-m-d');
+                })
+                ->sort()
+                ->last();
+
+            // ソート用の日付（タイムスタンプ）
+            $lastVisitTimestamp = $shopRecords
+                ->map(function ($record) {
+                    return $record->visit_date ? $record->visit_date->timestamp : $record->created_at->timestamp;
+                })
+                ->max();
+
+            $shopsMap[] = [
+                'name' => $firstRecord->shop_name,
+                'shop_type' => $firstRecord->shop_type,
+                'visit_count' => $visitCount,
+                'average_rating' => $averageRating,
+                'last_visit_date' => $lastVisitDate,
+                'last_visit_timestamp' => $lastVisitTimestamp,
+            ];
+        }
+
+        // 最終利用日の降順でソート
+        usort($shopsMap, function ($a, $b) {
+            return $b['last_visit_timestamp'] <=> $a['last_visit_timestamp'];
+        });
+
+        // ソート用のタイムスタンプを削除
+        $shops = array_map(function ($shop) {
+            unset($shop['last_visit_timestamp']);
+            return $shop;
+        }, $shopsMap);
 
         return $shops;
     }
 
     /**
      * 特定のお店の記録一覧を取得
+     * 各記録にヒメの画像URL（最初の1枚目）を含める
      */
     public function getShopRecords(string $userId, string $shopType, string $shopName)
     {
         $shopTypeId = $this->convertShopTypeToId($shopType);
         
-        return Record::where('user_id', $userId)
+        $records = Record::where('user_id', $userId)
             ->where('shop_type_id', $shopTypeId)
             ->where('shop_name', $shopName)
             ->with('shopType')
             ->orderBy('visit_date', 'desc')
             ->orderBy('created_at', 'desc')
             ->get();
+
+        // 各記録にヒメの画像URL（最初の1枚目）を追加
+        foreach ($records as $record) {
+            $girlImageUrl = null;
+            if ($record->girl_name) {
+                $girl = Girl::where('user_id', $userId)
+                    ->where('girl_name', $record->girl_name)
+                    ->with(['girlImageUrls' => function ($query) {
+                        $query->orderBy('display_order')->limit(1);
+                    }])
+                    ->first();
+                
+                if ($girl && $girl->girlImageUrls && $girl->girlImageUrls->count() > 0) {
+                    $girlImageUrl = $girl->girlImageUrls->first()->image_url;
+                }
+            }
+            $record->girl_image_url = $girlImageUrl;
+        }
+
+        return $records;
     }
 
     /**

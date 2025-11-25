@@ -5,7 +5,7 @@ import StarRating from './StarRating'
 import { getApiUrl, getAuthHeaders, getAuthToken, handleAuthError } from '../utils/api'
 
 function ShopList({ user, onShopClick }) {
-  const [shops, setShops] = useState({})
+  const [shops, setShops] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -37,7 +37,7 @@ function ShopList({ user, onShopClick }) {
         throw new Error(data.message || data.error || 'お店一覧の取得に失敗しました')
       }
 
-      setShops(data.shops || {})
+      setShops(data.shops || [])
     } catch (error) {
       console.error('Fetch shops error:', error)
       setError(error.message || 'お店一覧の取得中にエラーが発生しました')
@@ -50,7 +50,14 @@ function ShopList({ user, onShopClick }) {
     fetchShops()
   }, [user?.id])
 
-  const shopTypes = Object.keys(shops).sort()
+  const formatDate = (dateString) => {
+    if (!dateString) return ''
+    const date = new Date(dateString)
+    const year = date.getFullYear()
+    const month = date.getMonth() + 1
+    const day = date.getDate()
+    return `${year}年${month}月${day}日`
+  }
 
   return (
     <div className="shop-list-container">
@@ -61,50 +68,53 @@ function ShopList({ user, onShopClick }) {
       {error && (
         <div className="error-message">{error}</div>
       )}
-      {!isLoading && !error && shopTypes.length === 0 && (
+      {!isLoading && !error && shops.length === 0 && (
         <div className="empty-message">まだお店が登録されていません。</div>
       )}
-      {!isLoading && !error && shopTypes.length > 0 && (
+      {!isLoading && !error && shops.length > 0 && (
         <div className="shop-list-content">
-          {shopTypes.map((shopType) => (
-            <div key={shopType} className="shop-type-group">
-              <h3 className="shop-type-title">{shopType}</h3>
-              <ul className="shop-name-list">
-                {shops[shopType].map((shop, index) => {
-                  const shopName = typeof shop === 'string' ? shop : shop.name
-                  const visitCount = typeof shop === 'object' ? shop.visit_count : 0
-                  const averageRating = typeof shop === 'object' ? shop.average_rating : 0
-                  
-                  return (
-                    <li 
-                      key={index} 
-                      className="shop-name-item"
-                      onClick={() => onShopClick && onShopClick(shopType, shopName)}
-                    >
-                      <div className="shop-name-item-header">
-                        <span className="shop-name-item-name">{shopName}</span>
-                      </div>
-                      <div className="shop-name-item-stats">
-                        <div className="shop-name-item-stat">
-                          <span className="shop-name-item-stat-label">利用回数</span>
-                          <span className="shop-name-item-stat-value">{visitCount}回</span>
+          <ul className="shop-name-list">
+            {shops.map((shop, index) => {
+              const shopName = shop.name || ''
+              const shopType = shop.shop_type || ''
+              const visitCount = shop.visit_count || 0
+              const averageRating = shop.average_rating || 0
+              const lastVisitDate = shop.last_visit_date || ''
+              
+              return (
+                <li 
+                  key={index} 
+                  className="shop-name-item"
+                  onClick={() => onShopClick && onShopClick(shopType, shopName)}
+                >
+                  <div className="shop-name-item-header">
+                    <span className="shop-name-item-name">{shopName}</span>
+                  </div>
+                  <div className="shop-name-item-stats">
+                    <div className="shop-name-item-stat">
+                      <span className="shop-name-item-stat-label">利用回数</span>
+                      <span className="shop-name-item-stat-value">{visitCount}回</span>
+                    </div>
+                    {averageRating > 0 && (
+                      <div className="shop-name-item-stat">
+                        <span className="shop-name-item-stat-label">平均評価</span>
+                        <div className="shop-name-item-rating">
+                          <StarRating rating={averageRating} readonly={true} />
+                          <span className="shop-name-item-rating-value">{averageRating}</span>
                         </div>
-                        {averageRating > 0 && (
-                          <div className="shop-name-item-stat">
-                            <span className="shop-name-item-stat-label">平均評価</span>
-                            <div className="shop-name-item-rating">
-                              <StarRating rating={averageRating} readonly={true} />
-                              <span className="shop-name-item-rating-value">{averageRating}</span>
-                            </div>
-                          </div>
-                        )}
                       </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
-          ))}
+                    )}
+                    {lastVisitDate && (
+                      <div className="shop-name-item-stat">
+                        <span className="shop-name-item-stat-label">最終利用日</span>
+                        <span className="shop-name-item-stat-value">{formatDate(lastVisitDate)}</span>
+                      </div>
+                    )}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
         </div>
       )}
     </div>

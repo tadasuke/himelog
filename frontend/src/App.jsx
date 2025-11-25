@@ -273,6 +273,8 @@ function App() {
   }
 
   const handleGirlClick = (girlName) => {
+    // お店詳細画面を閉じて、ヒメ詳細画面を表示
+    setSelectedShop(null)
     setSelectedGirl(girlName)
     // ヒメ詳細画面を表示する際は、ヒメメニューをアクティブにする
     setCurrentPage('girls')

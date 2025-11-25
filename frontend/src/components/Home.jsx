@@ -148,9 +148,21 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
   }
 
   const getPreviewText = (text, maxLines = 2) => {
-    if (!text) return ''
+    if (!text) {
+      return {
+        text: '',
+        hasMore: false,
+        fullText: ''
+      }
+    }
     const lines = text.split('\n')
-    return lines.slice(0, maxLines).join('\n')
+    const previewLines = lines.slice(0, maxLines)
+    const hasMore = lines.length > maxLines
+    return {
+      text: previewLines.join('\n'),
+      hasMore: hasMore,
+      fullText: text
+    }
   }
 
   const toggleCard = (recordId) => {
@@ -221,38 +233,52 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
             <div className="logs-grid">
             {records.map((record) => {
               const isExpanded = expandedCards.has(record.id)
+              const reviewPreview = record.review ? getPreviewText(record.review, 2) : {
+                text: '',
+                hasMore: false,
+                fullText: ''
+              }
               return (
                 <div 
                   key={record.id} 
                   className="log-card"
-                  onClick={() => toggleCard(record.id)}
-                  style={{ cursor: 'pointer' }}
                 >
                   <div className="log-card-header">
-                    <div className="log-card-shop">
-                      <span className="log-card-shop-type">
-                        {typeof record.shop_type === 'string' 
-                          ? record.shop_type 
-                          : record.shop_type?.name || record.shop_type_id || ''}
-                      </span>
-                      <span 
-                        className="log-card-shop-name clickable"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (onShopClick) {
-                            const shopType = typeof record.shop_type === 'string' 
-                              ? record.shop_type 
-                              : record.shop_type?.name || record.shop_type_id || ''
-                            onShopClick(shopType, record.shop_name)
-                          }
-                        }}
-                      >
-                        {record.shop_name}
+                    {record.girl_image_url && (
+                      <div className="log-card-image">
+                        <img 
+                          src={record.girl_image_url} 
+                          alt={record.girl_name || 'ヒメの画像'}
+                          className="log-card-image-img"
+                        />
+                      </div>
+                    )}
+                    <div className="log-card-header-content">
+                      <div className="log-card-shop">
+                        <span className="log-card-shop-type">
+                          {typeof record.shop_type === 'string' 
+                            ? record.shop_type 
+                            : record.shop_type?.name || record.shop_type_id || ''}
+                        </span>
+                        <span 
+                          className="log-card-shop-name clickable"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (onShopClick) {
+                              const shopType = typeof record.shop_type === 'string' 
+                                ? record.shop_type 
+                                : record.shop_type?.name || record.shop_type_id || ''
+                              onShopClick(shopType, record.shop_name)
+                            }
+                          }}
+                        >
+                          {record.shop_name}
+                        </span>
+                      </div>
+                      <span className="log-card-date">
+                        {record.visit_date ? formatDate(record.visit_date) : formatDate(record.created_at)}
                       </span>
                     </div>
-                    <span className="log-card-date">
-                      {record.visit_date ? formatDate(record.visit_date) : formatDate(record.created_at)}
-                    </span>
                   </div>
                   <div className="log-card-info">
                     <h3 
@@ -272,39 +298,56 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
                       <span className="log-card-rating-label">総合</span>
                       <StarRating rating={record.overall_rating || 0} readonly={true} />
                     </div>
-                    {isExpanded && (
-                      <>
-                        <div className="log-card-rating-item">
-                          <span className="log-card-rating-label">顔</span>
-                          <StarRating rating={record.face_rating || 0} readonly={true} />
-                        </div>
-                        <div className="log-card-rating-item">
-                          <span className="log-card-rating-label">スタイル</span>
-                          <StarRating rating={record.style_rating || 0} readonly={true} />
-                        </div>
-                        <div className="log-card-rating-item">
-                          <span className="log-card-rating-label">接客</span>
-                          <StarRating rating={record.service_rating || 0} readonly={true} />
-                        </div>
-                      </>
-                    )}
+                    <div className="log-card-rating-item">
+                      <span className="log-card-rating-label">顔</span>
+                      <StarRating rating={record.face_rating || 0} readonly={true} />
+                    </div>
+                    <div className="log-card-rating-item">
+                      <span className="log-card-rating-label">スタイル</span>
+                      <StarRating rating={record.style_rating || 0} readonly={true} />
+                    </div>
+                    <div className="log-card-rating-item">
+                      <span className="log-card-rating-label">接客</span>
+                      <StarRating rating={record.service_rating || 0} readonly={true} />
+                    </div>
                   </div>
-                  {isExpanded && record.course && (
+                  {record.course && (
                     <div className="log-card-price">
                       <span className="log-card-price-label">コース</span>
                       <span className="log-card-price-value">{record.course}</span>
                     </div>
                   )}
-                  {isExpanded && record.price && (
+                  {record.price && (
                     <div className="log-card-price">
                       <span className="log-card-price-label">利用料金</span>
                       <span className="log-card-price-value">¥{record.price.toLocaleString()}</span>
                     </div>
                   )}
                   {record.review && (
-                    <p className={`log-card-preview ${isExpanded ? 'expanded' : 'collapsed'}`}>
-                      {isExpanded ? record.review : getPreviewText(record.review, 2)}
-                    </p>
+                    <div className={`log-card-review ${isExpanded ? 'expanded' : 'collapsed'}`}>
+                      <p className="log-card-preview">
+                        {isExpanded ? reviewPreview.fullText : reviewPreview.text}
+                        {!isExpanded && reviewPreview.hasMore && (
+                          <span className="log-card-review-ellipsis">...</span>
+                        )}
+                      </p>
+                    </div>
+                  )}
+                  {!isExpanded && (
+                    <div className="log-card-expand-container">
+                      <button 
+                        className="log-card-expand-btn" 
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleCard(record.id)
+                        }}
+                        title="続きを読む"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                    </div>
                   )}
                   <div className="log-card-footer">
                     {isExpanded && (

@@ -358,7 +358,7 @@ function GirlDetail({ user, girlName, onShopClick }) {
       .reduce((acc, price) => acc + price, 0)
   }, [records])
 
-  // 会った回数を計算
+  // 出会った回数を計算
   const visitCount = useMemo(() => {
     return records.length
   }, [records])
@@ -467,7 +467,7 @@ function GirlDetail({ user, girlName, onShopClick }) {
           <h2 className="girl-detail-title">{girlName}</h2>
           {records.length > 0 && (
             <div className="girl-detail-visit-count">
-              <span className="girl-detail-visit-count-label">会った回数</span>
+              <span className="girl-detail-visit-count-label">出会った回数</span>
               <span className="girl-detail-visit-count-value">{visitCount}回</span>
             </div>
           )}
@@ -729,7 +729,7 @@ function GirlDetail({ user, girlName, onShopClick }) {
       {!isLoading && !error && records.length > 0 && (
         <div className="girl-detail-records">
           <div className="girl-detail-records-header">
-            <h3 className="girl-detail-records-title">記録一覧</h3>
+            <h3 className="girl-detail-records-title">出会いの履歴</h3>
           </div>
           <div className="logs-grid">
             {records.map((record) => {
