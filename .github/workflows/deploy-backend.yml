@@ -336,7 +336,17 @@ jobs:
           echo ""
           echo "Step 9: Optimizing Laravel (caching routes and views)"
           php artisan route:cache || { echo "Error: route:cache failed" && exit 1; }
-          php artisan view:cache || { echo "Error: view:cache failed" && exit 1; }
+          # view:cacheはビューパスが見つからない場合に失敗する可能性があるため、エラーを無視して続行
+          set +e
+          php artisan view:cache
+          VIEW_CACHE_EXIT_CODE=$?
+          set -e
+          if [ $VIEW_CACHE_EXIT_CODE -ne 0 ]; then
+            echo "Warning: view:cache failed (exit code: $VIEW_CACHE_EXIT_CODE)"
+            echo "This may be due to view path not being found, continuing..."
+          else
+            echo "View cache created successfully"
+          fi
           
           echo ""
           echo "=== Deployment completed successfully ==="'
