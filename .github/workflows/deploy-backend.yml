@@ -201,56 +201,92 @@ jobs:
         run: |
           set -e
           INSTANCE_ID="i-0c78bb1a7c6be7fa9"
-          DEPLOY_PATH="/mf"
-          REPO_PATH="/tmp/himelog-repo"
           
-          # JSONパラメータファイルを作成（シンプルなコマンドのみ使用）
-          cat > /tmp/ssm-params.json << 'EOF'
-          {
-            "commands": [
-              "export HOME=/root",
-              "export COMPOSER_HOME=/root/.composer",
-              "REPO_PATH=/mf/himelog-repo",
-              "DEPLOY_PATH=/mf/himelog-api",
-              "GITHUB_REPO=https://github.com/tadasuke/himelog.git",
-              "BRANCH=develop",
-              "echo '=== Starting deployment ==='",
-              "echo 'Step 1: Updating repository'",
-              "if [ -d $REPO_PATH/.git ]; then",
-              "  echo 'Repository exists, pulling latest changes'",
-              "  cd $REPO_PATH",
-              "  git fetch origin",
-              "  git reset --hard origin/$BRANCH",
-              "  git clean -fd",
-              "else",
-              "  echo 'Repository does not exist, cloning'",
-              "  mkdir -p $(dirname $REPO_PATH)",
-              "  cd $(dirname $REPO_PATH)",
-              "  git clone -b $BRANCH $GITHUB_REPO $(basename $REPO_PATH)",
-              "fi",
-              "echo 'Step 2: Verifying repository structure'",
-              "test -d $REPO_PATH/backend || (echo 'Error: backend directory not found' && exit 1)",
-              "echo 'Step 3: Syncing backend files to deployment path'",
-              "mkdir -p $DEPLOY_PATH",
-              "rsync -av --exclude=.git --exclude=node_modules --exclude=vendor --exclude=storage/logs/*.log --exclude=storage/framework/cache/* --exclude=storage/framework/sessions/* --exclude=storage/framework/views/* $REPO_PATH/backend/ $DEPLOY_PATH/",
-              "echo 'Step 4: Installing composer dependencies'",
-              "cd $DEPLOY_PATH",
-              "composer install --no-dev --optimize-autoloader --no-interaction",
-              "echo 'Step 6: Clearing Laravel caches'",
-              "php artisan config:clear",
-              "php artisan cache:clear",
-              "php artisan route:clear",
-              "php artisan view:clear",
-              "echo 'Step 7: Running migrations'",
-              "php artisan migrate --force",
-              "echo 'Step 8: Optimizing Laravel'",
-              "php artisan config:cache",
-              "php artisan route:cache",
-              "php artisan view:cache",
-              "echo '=== Deployment completed successfully ==='"
-            ]
-          }
-          EOF
+          # すべてのコマンドを1つのシェルスクリプトとして結合
+          # これにより、ディレクトリ移動などの状態が引き継がれる
+          DEPLOY_SCRIPT='#!/bin/bash
+          set -e
+          export HOME=/root
+          export COMPOSER_HOME=/root/.composer
+          
+          REPO_PATH=/mf/himelog-repo
+          DEPLOY_PATH=/mf/himelog-api
+          GITHUB_REPO=https://github.com/tadasuke/himelog.git
+          BRANCH=develop
+          
+          echo "=== Starting deployment ==="
+          echo "Current directory: $(pwd)"
+          echo "Current user: $(whoami)"
+          
+          echo ""
+          echo "Step 1: Updating repository"
+          if [ -d "$REPO_PATH/.git" ]; then
+            echo "Repository exists, pulling latest changes"
+            cd "$REPO_PATH"
+            git fetch origin || { echo "Error: git fetch failed" && exit 1; }
+            git reset --hard origin/$BRANCH || { echo "Error: git reset failed" && exit 1; }
+            git clean -fd || { echo "Error: git clean failed" && exit 1; }
+          else
+            echo "Repository does not exist, cloning"
+            mkdir -p "$(dirname $REPO_PATH)"
+            cd "$(dirname $REPO_PATH)"
+            git clone -b $BRANCH "$GITHUB_REPO" "$(basename $REPO_PATH)" || { echo "Error: git clone failed" && exit 1; }
+          fi
+          
+          echo ""
+          echo "Step 2: Verifying repository structure"
+          test -d "$REPO_PATH/backend" || { echo "Error: backend directory not found" && exit 1; }
+          
+          echo ""
+          echo "Step 3: Syncing backend files to deployment path"
+          mkdir -p "$DEPLOY_PATH" || { echo "Error: Failed to create deployment directory" && exit 1; }
+          rsync -av --exclude=.git --exclude=node_modules --exclude=vendor --exclude="storage/logs/*.log" --exclude="storage/framework/cache/*" --exclude="storage/framework/sessions/*" --exclude="storage/framework/views/*" "$REPO_PATH/backend/" "$DEPLOY_PATH/" || { echo "Error: rsync failed" && exit 1; }
+          
+          echo ""
+          echo "Step 4: Installing composer dependencies"
+          cd "$DEPLOY_PATH" || { echo "Error: Failed to change to deployment directory" && exit 1; }
+          composer install --no-dev --optimize-autoloader --no-interaction || { echo "Error: composer install failed" && exit 1; }
+          
+          echo ""
+          echo "Step 5: Verifying PHP and artisan availability"
+          php --version || { echo "Error: PHP is not available" && exit 1; }
+          test -f artisan || { echo "Error: artisan file not found in $(pwd)" && exit 1; }
+          
+          echo ""
+          echo "Step 6: Clearing Laravel caches"
+          php artisan config:clear || { echo "Error: config:clear failed" && exit 1; }
+          php artisan cache:clear || { echo "Error: cache:clear failed" && exit 1; }
+          php artisan route:clear || { echo "Error: route:clear failed" && exit 1; }
+          php artisan view:clear || { echo "Error: view:clear failed" && exit 1; }
+          
+          echo ""
+          echo "Step 7: Running migrations"
+          php artisan migrate --force || { echo "Error: migrate failed" && exit 1; }
+          
+          echo ""
+          echo "Step 8: Optimizing Laravel"
+          php artisan config:cache || { echo "Error: config:cache failed" && exit 1; }
+          php artisan route:cache || { echo "Error: route:cache failed" && exit 1; }
+          php artisan view:cache || { echo "Error: view:cache failed" && exit 1; }
+          
+          echo ""
+          echo "=== Deployment completed successfully ==="'
+          
+          # JSONパラメータファイルを作成
+          # jqまたはpython3を使用してJSONを生成
+          if command -v jq > /dev/null 2>&1; then
+            # jqを使用（推奨）
+            echo "$DEPLOY_SCRIPT" | jq -Rs '{commands: [.]}' > /tmp/ssm-params.json
+          elif command -v python3 > /dev/null 2>&1; then
+            # python3を使用（フォールバック）
+            echo "$DEPLOY_SCRIPT" | python3 -c "import json, sys; print(json.dumps({'commands': [sys.stdin.read()]}))" > /tmp/ssm-params.json
+          else
+            echo "Error: Neither jq nor python3 is available"
+            exit 1
+          fi
+          
+          echo "Generated SSM parameters file:"
+          cat /tmp/ssm-params.json
           
           echo "Sending SSM command to instance: $INSTANCE_ID"
           echo "Parameters file contents:"
@@ -410,18 +446,57 @@ jobs:
             exit 0
           fi
           
-          echo "=== Command Output ==="
+          echo "=== Command Output (Standard Output) ==="
           set +e
-          aws ssm get-command-invocation \
+          STDOUT=$(aws ssm get-command-invocation \
             --command-id "$COMMAND_ID" \
             --instance-id "$INSTANCE_ID" \
-            --query '[StandardOutputContent, StandardErrorContent]' \
-            --output text 2>&1
-          EXIT_CODE=$?
+            --query 'StandardOutputContent' \
+            --output text 2>&1)
+          STDOUT_EXIT_CODE=$?
           set -e
           
-          if [ $EXIT_CODE -ne 0 ]; then
-            echo "Warning: Failed to get command output (exit code: $EXIT_CODE)"
-            echo "This is not a fatal error, command may have completed successfully"
+          if [ $STDOUT_EXIT_CODE -eq 0 ]; then
+            echo "$STDOUT"
+          else
+            echo "Warning: Failed to get standard output (exit code: $STDOUT_EXIT_CODE)"
+          fi
+          
+          echo ""
+          echo "=== Command Output (Standard Error) ==="
+          set +e
+          STDERR=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query 'StandardErrorContent' \
+            --output text 2>&1)
+          STDERR_EXIT_CODE=$?
+          set -e
+          
+          if [ $STDERR_EXIT_CODE -eq 0 ]; then
+            if [ -n "$STDERR" ] && [ "$STDERR" != "None" ]; then
+              echo "$STDERR"
+            else
+              echo "(No error output)"
+            fi
+          else
+            echo "Warning: Failed to get standard error (exit code: $STDERR_EXIT_CODE)"
+          fi
+          
+          echo ""
+          echo "=== Command Status ==="
+          set +e
+          STATUS=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query 'Status' \
+            --output text 2>&1)
+          STATUS_EXIT_CODE=$?
+          set -e
+          
+          if [ $STATUS_EXIT_CODE -eq 0 ]; then
+            echo "Status: $STATUS"
+          else
+            echo "Warning: Failed to get command status (exit code: $STATUS_EXIT_CODE)"
           fi
 
