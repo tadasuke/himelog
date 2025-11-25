@@ -36,8 +36,13 @@ function BottomNavigation({ user, currentPage, onNavigate }) {
       label: 'ヒメ',
       icon: (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="2"/>
-          <path d="M6 21C6 17.6863 8.68629 15 12 15C15.3137 15 18 17.6863 18 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          <circle cx="12" cy="7.5" r="3.5" stroke="currentColor" strokeWidth="2"/>
+          <path d="M6 21C6 18.2386 8.23858 16 11 16H13C15.7614 16 18 18.2386 18 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          <path d="M8 11C8 11 9 10 12 10C15 10 16 11 16 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          <path d="M10 2.5L10.5 1.5L12 1.5L13.5 1.5L14 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M10.5 1.5L10.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          <path d="M13.5 1.5L13.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          <path d="M7 16L12 20L17 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       )
     },
