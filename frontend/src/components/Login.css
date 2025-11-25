@@ -116,6 +116,87 @@
   width: 100% !important;
 }
 
+.login-divider {
+  display: flex;
+  align-items: center;
+  margin: 24px 0;
+  position: relative;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(232, 106, 255, 0.2);
+}
+
+.divider-text {
+  padding: 0 16px;
+  color: #a0a0a0;
+  font-size: 13px;
+}
+
+.x-login-btn {
+  width: 100%;
+  min-height: 48px;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, rgba(232, 106, 255, 0.1) 0%, rgba(111, 140, 255, 0.1) 100%);
+  border: 1px solid rgba(232, 106, 255, 0.3);
+  border-radius: 12px;
+  color: #e8e8e8;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.x-login-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(232, 106, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.x-login-btn:hover::before {
+  left: 100%;
+}
+
+.x-login-btn:hover {
+  border-color: rgba(232, 106, 255, 0.5);
+  box-shadow: 0 0 20px rgba(232, 106, 255, 0.3),
+              0 0 40px rgba(111, 140, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.x-login-btn:active {
+  transform: scale(0.98);
+  background: linear-gradient(135deg, rgba(232, 106, 255, 0.15) 0%, rgba(111, 140, 255, 0.15) 100%);
+}
+
+.x-login-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.x-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
 /* タブレット以上 */
 @media (min-width: 768px) {
   .login-container {
@@ -136,6 +217,11 @@
   }
 
   .google-login-btn {
+    font-size: 16px;
+    padding: 14px 24px;
+  }
+
+  .x-login-btn {
     font-size: 16px;
     padding: 14px 24px;
   }

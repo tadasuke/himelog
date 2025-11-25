@@ -209,14 +209,24 @@ class GirlController extends Controller
     private function fetchUrlTitle(string $url): string
     {
         try {
+            // X（Twitter）のURLかどうかを判定
+            $isTwitterUrl = preg_match('/^(https?:\/\/)?(www\.)?(x\.com|twitter\.com)/i', $url);
+            
             // curlを使用してHTMLを取得（より確実）
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, $url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
             curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
-            curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+            
+            // X（Twitter）の場合はbotとして認識させるUser-Agentを使用
+            if ($isTwitterUrl) {
+                curl_setopt($ch, CURLOPT_USERAGENT, 'Twitterbot/1.0');
+            } else {
+                curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+            }
+            
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_ENCODING, ''); // 自動的にgzip/deflateを処理
             $html = curl_exec($ch);
@@ -225,6 +235,15 @@ class GirlController extends Controller
             curl_close($ch);
 
             if ($html === false || $httpCode !== 200) {
+                // X（Twitter）のURLでHTMLが取得できない場合、ユーザー名を抽出
+                if ($isTwitterUrl) {
+                    if (preg_match('/(?:x\.com|twitter\.com)\/([^\/\?]+)/i', $url, $matches)) {
+                        $username = trim($matches[1]);
+                        if (!in_array(strtolower($username), ['home', 'explore', 'notifications', 'messages', 'i', 'settings'])) {
+                            return '@' . $username . ' (X)';
+                        }
+                    }
+                }
                 return $url;
             }
 
@@ -244,7 +263,29 @@ class GirlController extends Controller
                 $html = mb_convert_encoding($html, 'UTF-8', $charset);
             }
 
-            // HTMLからタイトルを抽出
+            // 1. Open Graphタイトルを優先的に取得
+            if (preg_match('/<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)["\']/i', $html, $matches)) {
+                $title = trim($matches[1]);
+                $title = html_entity_decode($title, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                $title = preg_replace('/\s+/', ' ', $title);
+                $title = trim($title);
+                if (!empty($title)) {
+                    return $title;
+                }
+            }
+
+            // 2. Twitter Cardタイトルを取得
+            if (preg_match('/<meta[^>]+name=["\']twitter:title["\'][^>]+content=["\']([^"\']+)["\']/i', $html, $matches)) {
+                $title = trim($matches[1]);
+                $title = html_entity_decode($title, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                $title = preg_replace('/\s+/', ' ', $title);
+                $title = trim($title);
+                if (!empty($title)) {
+                    return $title;
+                }
+            }
+
+            // 3. 通常のtitleタグを取得
             if (preg_match('/<title[^>]*>([^<]+)<\/title>/is', $html, $matches)) {
                 $title = trim($matches[1]);
                 
@@ -263,10 +304,32 @@ class GirlController extends Controller
                 return $title;
             }
 
+            // X（Twitter）のURLでタイトルが取得できない場合、ユーザー名を抽出
+            if ($isTwitterUrl) {
+                // XのURLパターンからユーザー名を抽出
+                // https://x.com/username または https://x.com/username/status/123456
+                if (preg_match('/(?:x\.com|twitter\.com)\/([^\/\?]+)/i', $url, $matches)) {
+                    $username = trim($matches[1]);
+                    // statusなどの特殊なパスは除外
+                    if (!in_array(strtolower($username), ['home', 'explore', 'notifications', 'messages', 'i', 'settings'])) {
+                        return '@' . $username . ' (X)';
+                    }
+                }
+            }
+
             // タイトルが見つからない場合はURLを返す
             return $url;
         } catch (\Exception $e) {
             Log::error('Failed to fetch URL title: ' . $e->getMessage());
+            
+            // エラー時もX（Twitter）のURLの場合はユーザー名を抽出
+            if (preg_match('/(?:x\.com|twitter\.com)\/([^\/\?]+)/i', $url, $matches)) {
+                $username = trim($matches[1]);
+                if (!in_array(strtolower($username), ['home', 'explore', 'notifications', 'messages', 'i', 'settings'])) {
+                    return '@' . $username . ' (X)';
+                }
+            }
+            
             return $url;
         }
     }

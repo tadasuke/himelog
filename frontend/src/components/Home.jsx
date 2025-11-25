@@ -3,7 +3,7 @@ import PropTypes from 'prop-types'
 import './Home.css'
 import RecordForm from './RecordForm'
 import StarRating from './StarRating'
-import { getApiUrl, getAuthHeaders, getAuthToken, handleAuthError } from '../utils/api'
+import { getApiUrl, fetchWithAuth, getAuthToken, handleAuthError } from '../utils/api'
 
 function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onShopClick, onGirlClick }) {
   const [records, setRecords] = useState([])
@@ -28,7 +28,7 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
     setError(null)
 
     try {
-      const response = await fetch(getApiUrl('/api/records'), getAuthHeaders())
+      const response = await fetchWithAuth(getApiUrl('/api/records'), { method: 'GET' })
       
       // 401エラーの場合は認証エラー処理を実行
       if (response.status === 401) {
@@ -105,9 +105,9 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
     setError(null)
 
     try {
-      const response = await fetch(getApiUrl(`/api/records/${deleteConfirmRecord.id}`), getAuthHeaders({
+      const response = await fetchWithAuth(getApiUrl(`/api/records/${deleteConfirmRecord.id}`), {
         method: 'DELETE',
-      }))
+      })
 
       // 401エラーの場合は認証エラー処理を実行
       if (response.status === 401) {

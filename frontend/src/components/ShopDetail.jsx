@@ -3,7 +3,7 @@ import PropTypes from 'prop-types'
 import './ShopDetail.css'
 import StarRating from './StarRating'
 import RecordForm from './RecordForm'
-import { getApiUrl, getAuthHeaders, getAuthToken, handleAuthError } from '../utils/api'
+import { getApiUrl, fetchWithAuth, getAuthToken, handleAuthError } from '../utils/api'
 
 function ShopDetail({ user, shopType, shopName, onGirlClick }) {
   const [records, setRecords] = useState([])
@@ -36,9 +36,9 @@ function ShopDetail({ user, shopType, shopName, onGirlClick }) {
         shop_type: shopType,
         shop_name: shopName,
       })
-      const response = await fetch(
+      const response = await fetchWithAuth(
         getApiUrl(`/api/records/shop-records?${params}`),
-        getAuthHeaders()
+        { method: 'GET' }
       )
       
       // 401エラーの場合は認証エラー処理を実行
@@ -85,9 +85,9 @@ function ShopDetail({ user, shopType, shopName, onGirlClick }) {
         shop_type: shopType,
         shop_name: shopName,
       })
-      const response = await fetch(
+      const response = await fetchWithAuth(
         getApiUrl(`/api/shops?${params}`),
-        getAuthHeaders()
+        { method: 'GET' }
       )
       
       if (response.status === 401) {

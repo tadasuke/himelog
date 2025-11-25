@@ -16,6 +16,9 @@ Route::post('/auth/mock-login', [AuthController::class, 'mockLogin']);
 Route::get('/auth/google/redirect', [AuthController::class, 'googleRedirect']);
 Route::get('/auth/google/callback', [AuthController::class, 'googleCallback']);
 Route::post('/auth/google/login', [AuthController::class, 'googleLogin']);
+Route::post('/auth/x/callback', [AuthController::class, 'xCallback']);
+Route::post('/auth/x/login', [AuthController::class, 'xLogin']);
+Route::post('/auth/x/refresh', [AuthController::class, 'xRefresh']);
 Route::post('/auth/logout', [AuthController::class, 'logout']);
 
 // 記録関連のAPI（認証必須）

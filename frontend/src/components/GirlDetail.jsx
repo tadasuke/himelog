@@ -3,7 +3,7 @@ import PropTypes from 'prop-types'
 import './GirlDetail.css'
 import StarRating from './StarRating'
 import RecordForm from './RecordForm'
-import { getApiUrl, getAuthHeaders, getAuthToken, handleAuthError } from '../utils/api'
+import { getApiUrl, fetchWithAuth, getAuthToken, handleAuthError } from '../utils/api'
 
 function GirlDetail({ user, girlName, onShopClick }) {
   const [records, setRecords] = useState([])
@@ -40,9 +40,9 @@ function GirlDetail({ user, girlName, onShopClick }) {
       const params = new URLSearchParams({
         girl_name: girlName,
       })
-      const response = await fetch(
+      const response = await fetchWithAuth(
         getApiUrl(`/api/records/girl-records?${params}`),
-        getAuthHeaders()
+        { method: 'GET' }
       )
       
       // 401エラーの場合は認証エラー処理を実行
@@ -88,9 +88,9 @@ function GirlDetail({ user, girlName, onShopClick }) {
       const params = new URLSearchParams({
         girl_name: girlName,
       })
-      const response = await fetch(
+      const response = await fetchWithAuth(
         getApiUrl(`/api/girls?${params}`),
-        getAuthHeaders()
+        { method: 'GET' }
       )
       
       if (response.status === 401) {
@@ -290,9 +290,9 @@ function GirlDetail({ user, girlName, onShopClick }) {
       const params = new URLSearchParams({
         url: url,
       })
-      const response = await fetch(
+      const response = await fetchWithAuth(
         getApiUrl(`/api/url-title?${params}`),
-        getAuthHeaders()
+        { method: 'GET' }
       )
       
       if (response.status === 401) {

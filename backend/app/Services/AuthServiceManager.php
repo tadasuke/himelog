@@ -19,8 +19,7 @@ class AuthServiceManager
     {
         // 認証サービスを登録
         $this->registerAuthService(new GoogleAuthService());
-        // 将来的にX認証などを追加する場合はここに追加
-        // $this->registerAuthService(new XAuthService());
+        $this->registerAuthService(new XAuthService());
     }
 
     /**
@@ -49,13 +48,26 @@ class AuthServiceManager
             : array_values($this->authServices);
 
         foreach ($servicesToTry as $authService) {
-            $user = $authService->verifyToken($token);
-            if ($user !== null) {
-                Log::info('Token verified', [
+            try {
+                $user = $authService->verifyToken($token);
+                if ($user !== null) {
+                    Log::info('Token verified', [
+                        'provider' => $authService->getProviderName(),
+                        'user_id' => $user['user_id']
+                    ]);
+                    return $user;
+                }
+            } catch (\Exception $e) {
+                // レート制限エラーなどの重要な例外は再スロー
+                // これにより、呼び出し元で適切に処理できる
+                if (strpos($e->getMessage(), 'rate limit') !== false) {
+                    throw $e;
+                }
+                // その他の例外はログに記録して続行
+                Log::warning('Token verification exception for provider', [
                     'provider' => $authService->getProviderName(),
-                    'user_id' => $user['user_id']
+                    'message' => $e->getMessage()
                 ]);
-                return $user;
             }
         }
 

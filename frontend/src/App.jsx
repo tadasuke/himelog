@@ -7,7 +7,7 @@ import ShopDetail from './components/ShopDetail'
 import GirlList from './components/GirlList'
 import GirlDetail from './components/GirlDetail'
 import BottomNavigation from './components/BottomNavigation'
-import { getApiUrl, removeAuthToken, getAuthToken } from './utils/api'
+import { getApiUrl, removeAuthToken, getAuthToken, setRefreshToken, setTokenExpiry, removeRefreshToken, removeTokenExpiry } from './utils/api'
 import './App.css'
 
 function App() {
@@ -29,6 +29,8 @@ function App() {
         localStorage.removeItem('user')
         localStorage.removeItem('isLoggedIn')
         removeAuthToken()
+        removeRefreshToken()
+        removeTokenExpiry()
         setIsLoggedIn(false)
         setUser(null)
       }
@@ -48,12 +50,16 @@ function App() {
         localStorage.removeItem('user')
         localStorage.removeItem('isLoggedIn')
         removeAuthToken()
+        removeRefreshToken()
+        removeTokenExpiry()
         setIsLoggedIn(false)
         setUser(null)
       }
     } else {
       // ユーザー情報がない場合はログイン状態をクリア
       removeAuthToken()
+      removeRefreshToken()
+      removeTokenExpiry()
       setIsLoggedIn(false)
       setUser(null)
     }
@@ -167,6 +173,77 @@ function App() {
     }
   }
 
+  const handleXLogin = async (accessToken) => {
+    try {
+      console.log('Sending X access token to backend...')
+      const response = await fetch(getApiUrl('/api/auth/x/login'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token: accessToken }),
+      })
+      
+      console.log('Response status:', response.status)
+      
+      let data
+      try {
+        data = await response.json()
+      } catch (jsonError) {
+        const text = await response.text()
+        console.error('Failed to parse JSON:', text)
+        alert(`ログインに失敗しました: サーバーからの応答が無効です (${response.status})`)
+        return
+      }
+      
+      console.log('Response data:', data)
+      
+      if (!response.ok) {
+        // エラーレスポンスの場合
+        const errorMessage = data.message || data.error || 'ログインに失敗しました'
+        console.error('Login failed:', data)
+        alert(`ログインに失敗しました: ${errorMessage}`)
+        return
+      }
+      
+      if (data.loggedIn && data.user) {
+        // ローカルストレージに保存
+        localStorage.setItem('user', JSON.stringify(data.user))
+        localStorage.setItem('isLoggedIn', 'true')
+        // 認証トークンを保存
+        if (accessToken) {
+          localStorage.setItem('authToken', accessToken)
+        }
+        // リフレッシュトークンと有効期限を保存
+        if (data.refresh_token) {
+          setRefreshToken(data.refresh_token)
+        }
+        if (data.expires_in) {
+          setTokenExpiry(data.expires_in)
+        }
+        
+        setUser(data.user)
+        setIsLoggedIn(true)
+        setCurrentPage('home') // ログイン時はホームに設定
+        // ページ遷移時にトップにスクロール（useEffectで処理されるため、ここでは不要だが念のため）
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: 0, behavior: 'auto' })
+            document.documentElement.scrollTop = 0
+            document.body.scrollTop = 0
+          })
+        })
+        console.log('X login successful:', data.user)
+      } else {
+        console.error('Login failed - invalid response:', data)
+        alert('ログインに失敗しました: 無効なレスポンス')
+      }
+    } catch (error) {
+      console.error('X login error:', error)
+      alert(`ログイン中にエラーが発生しました: ${error.message}`)
+    }
+  }
+
   const handleLogout = async () => {
     try {
       // バックエンドにログアウトリクエストを送信（オプション）
@@ -185,7 +262,9 @@ function App() {
       // ローカルストレージをクリア
       localStorage.removeItem('user')
       localStorage.removeItem('isLoggedIn')
-      localStorage.removeItem('authToken')
+      removeAuthToken()
+      removeRefreshToken()
+      removeTokenExpiry()
       
       // フロントエンドの状態をリセット
       setUser(null)
@@ -205,7 +284,9 @@ function App() {
       // エラーが発生しても状態はリセットする
       localStorage.removeItem('user')
       localStorage.removeItem('isLoggedIn')
-      localStorage.removeItem('authToken')
+      removeAuthToken()
+      removeRefreshToken()
+      removeTokenExpiry()
       setUser(null)
       setIsLoggedIn(false)
       setCurrentPage('home') // ログアウト時もホームにリセット
@@ -303,7 +384,7 @@ function App() {
   return (
     <div className="app">
       {!isLoggedIn ? (
-        <Login onGoogleLogin={handleGoogleLogin} />
+        <Login onGoogleLogin={handleGoogleLogin} onXLogin={handleXLogin} />
       ) : (
         <>
           {selectedShop ? (

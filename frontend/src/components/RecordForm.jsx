@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import StarRating from './StarRating'
-import { getApiUrl, getAuthHeaders, getAuthToken, handleAuthError } from '../utils/api'
+import { getApiUrl, fetchWithAuth, getAuthToken, handleAuthError } from '../utils/api'
 import './RecordForm.css'
 
 function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
@@ -62,7 +62,7 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
 
       try {
         const url = getApiUrl('/api/shop-types')
-        const response = await fetch(url, getAuthHeaders())
+        const response = await fetchWithAuth(url, { method: 'GET' })
         
         // 401エラーの場合は認証エラー処理を実行
         if (response.status === 401) {
@@ -233,7 +233,7 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
     try {
       const url = getApiUrl(`/api/records/shop-names?shop_type=${encodeURIComponent(shopType)}`)
       console.log('fetchShopNames: Fetching from URL:', url)
-      const response = await fetch(url, getAuthHeaders())
+      const response = await fetchWithAuth(url, { method: 'GET' })
       
       // 401エラーの場合は認証エラー処理を実行
       if (response.status === 401) {
@@ -293,7 +293,7 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
 
     setIsLoadingGirlNames(true)
     try {
-      const response = await fetch(getApiUrl(`/api/records/girl-names?shop_type=${encodeURIComponent(shopType)}&shop_name=${encodeURIComponent(shopName)}`), getAuthHeaders())
+      const response = await fetchWithAuth(getApiUrl(`/api/records/girl-names?shop_type=${encodeURIComponent(shopType)}&shop_name=${encodeURIComponent(shopName)}`), { method: 'GET' })
       
       // 401エラーの場合は認証エラー処理を実行
       if (response.status === 401) {
@@ -391,10 +391,10 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
         course: formData.course?.trim() || null,
       }
 
-      const response = await fetch(url, getAuthHeaders({
+      const response = await fetchWithAuth(url, {
         method: method,
         body: JSON.stringify(requestBody),
-      }))
+      })
 
       // 401エラーの場合は認証エラー処理を実行
       if (response.status === 401) {

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import './ShopList.css'
 import StarRating from './StarRating'
-import { getApiUrl, getAuthHeaders, getAuthToken, handleAuthError } from '../utils/api'
+import { getApiUrl, fetchWithAuth, getAuthToken, handleAuthError } from '../utils/api'
 
 function ShopList({ user, onShopClick }) {
   const [shops, setShops] = useState([])
@@ -23,7 +23,7 @@ function ShopList({ user, onShopClick }) {
     setError(null)
 
     try {
-      const response = await fetch(getApiUrl('/api/records/shops'), getAuthHeaders())
+      const response = await fetchWithAuth(getApiUrl('/api/records/shops'), { method: 'GET' })
       
       // 401エラーの場合は認証エラー処理を実行
       if (response.status === 401) {

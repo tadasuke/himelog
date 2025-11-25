@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import './GirlList.css'
 import StarRating from './StarRating'
-import { getApiUrl, getAuthHeaders, getAuthToken, handleAuthError } from '../utils/api'
+import { getApiUrl, fetchWithAuth, getAuthToken, handleAuthError } from '../utils/api'
 
 function GirlList({ user, onShopClick, onGirlClick }) {
   const [girls, setGirls] = useState([])
@@ -23,7 +23,7 @@ function GirlList({ user, onShopClick, onGirlClick }) {
     setError(null)
 
     try {
-      const response = await fetch(getApiUrl('/api/girls/list'), getAuthHeaders())
+      const response = await fetchWithAuth(getApiUrl('/api/girls/list'), { method: 'GET' })
       
       // 401エラーの場合は認証エラー処理を実行
       if (response.status === 401) {
