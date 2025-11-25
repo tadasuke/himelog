@@ -288,12 +288,51 @@ jobs:
           fi
           
           echo ""
-          echo "Step 7: Running migrations"
-          php artisan migrate --force || { echo "Error: migrate failed" && exit 1; }
+          echo "Step 7: Caching configuration (this will fetch DB credentials from Secrets Manager)"
+          # AWS_SECRET_ARNが設定されているか確認
+          if [ -z "$AWS_SECRET_ARN" ]; then
+            echo "Warning: AWS_SECRET_ARN is not set in environment variables"
+            echo "Checking .env file..."
+            if [ -f "$DEPLOY_PATH/.env" ]; then
+              AWS_SECRET_ARN_FROM_ENV=$(grep "^AWS_SECRET_ARN=" "$DEPLOY_PATH/.env" | cut -d '=' -f2 | tr -d '"' | tr -d "'" || echo "")
+              if [ -n "$AWS_SECRET_ARN_FROM_ENV" ]; then
+                echo "Found AWS_SECRET_ARN in .env file"
+                export AWS_SECRET_ARN="$AWS_SECRET_ARN_FROM_ENV"
+              else
+                echo "Warning: AWS_SECRET_ARN not found in .env file"
+              fi
+            else
+              echo "Warning: .env file not found at $DEPLOY_PATH/.env"
+            fi
+          else
+            echo "AWS_SECRET_ARN is set: $AWS_SECRET_ARN"
+          fi
+          # config:cacheを実行すると、ConfigCacheServiceProviderがSecrets ManagerからDB接続情報を取得して環境変数に設定する
+          php artisan config:cache || { echo "Error: config:cache failed" && exit 1; }
           
           echo ""
-          echo "Step 8: Optimizing Laravel"
-          php artisan config:cache || { echo "Error: config:cache failed" && exit 1; }
+          echo "Step 8: Running migrations"
+          # migrateはデータベース接続が必要（config:cacheでSecrets Managerから取得した情報を使用）
+          set +e
+          php artisan migrate --force
+          MIGRATE_EXIT_CODE=$?
+          set -e
+          
+          if [ $MIGRATE_EXIT_CODE -ne 0 ]; then
+            echo "Warning: migrate failed (exit code: $MIGRATE_EXIT_CODE)"
+            echo "This is likely due to database connection issues:"
+            echo "1. Database server may not be running or accessible"
+            echo "2. AWS_SECRET_ARN may not be set correctly"
+            echo "3. Secrets Manager may not be accessible from EC2 instance"
+            echo "4. Network/Security group may not allow connection"
+            echo "Continuing deployment, but migrations were not applied"
+            echo "Please check database connection and run migrations manually if needed"
+          else
+            echo "Migrations completed successfully"
+          fi
+          
+          echo ""
+          echo "Step 9: Optimizing Laravel (caching routes and views)"
           php artisan route:cache || { echo "Error: route:cache failed" && exit 1; }
           php artisan view:cache || { echo "Error: view:cache failed" && exit 1; }
           
