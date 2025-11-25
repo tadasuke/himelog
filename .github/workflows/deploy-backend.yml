@@ -294,7 +294,9 @@ jobs:
             echo "Warning: AWS_SECRET_ARN is not set in environment variables"
             echo "Checking .env file..."
             if [ -f "$DEPLOY_PATH/.env" ]; then
-              AWS_SECRET_ARN_FROM_ENV=$(grep "^AWS_SECRET_ARN=" "$DEPLOY_PATH/.env" | cut -d '=' -f2 | tr -d '"' | tr -d "'" || echo "")
+              # .envファイルからAWS_SECRET_ARNを取得
+              # クォートはLaravelのenv()関数が自動的に処理するので、そのまま使用
+              AWS_SECRET_ARN_FROM_ENV=$(grep "^AWS_SECRET_ARN=" "$DEPLOY_PATH/.env" | cut -d '=' -f2- || echo "")
               if [ -n "$AWS_SECRET_ARN_FROM_ENV" ]; then
                 echo "Found AWS_SECRET_ARN in .env file"
                 export AWS_SECRET_ARN="$AWS_SECRET_ARN_FROM_ENV"
