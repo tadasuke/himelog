@@ -57,9 +57,11 @@ jobs:
           if [ "$ENV" == "production" ]; then
             echo "bucket=himelog.production" >> $GITHUB_OUTPUT
             echo "aws_role=arn:aws:iam::034427362829:role/himelog_s3_production" >> $GITHUB_OUTPUT
+            echo "s3_path=app/" >> $GITHUB_OUTPUT
           else
             echo "bucket=himelog.develop" >> $GITHUB_OUTPUT
-            echo "aws_role=arn:aws:iam::034427362829:role/himelog_s3_develop/app" >> $GITHUB_OUTPUT
+            echo "aws_role=arn:aws:iam::034427362829:role/himelog_s3_develop" >> $GITHUB_OUTPUT
+            echo "s3_path=app/" >> $GITHUB_OUTPUT
           fi
 
       - name: Setup Node.js
@@ -107,13 +109,13 @@ jobs:
           (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
           (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true')
         run: |
-          aws s3 sync frontend/dist/ s3://${{ steps.env.outputs.bucket }}/ \
+          aws s3 sync frontend/dist/ s3://${{ steps.env.outputs.bucket }}/${{ steps.env.outputs.s3_path }} \
             --delete \
             --cache-control "public, max-age=31536000, immutable" \
             --exclude "*.html" \
             --exclude "*.json"
           
-          aws s3 sync frontend/dist/ s3://${{ steps.env.outputs.bucket }}/ \
+          aws s3 sync frontend/dist/ s3://${{ steps.env.outputs.bucket }}/${{ steps.env.outputs.s3_path }} \
             --delete \
             --cache-control "public, max-age=0, must-revalidate" \
             --include "*.html" \
