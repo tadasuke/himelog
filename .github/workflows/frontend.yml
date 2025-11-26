@@ -93,6 +93,7 @@ jobs:
       - name: Configure AWS credentials
         if: |
           (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
           (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true')
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -103,6 +104,7 @@ jobs:
       - name: Deploy to S3
         if: |
           (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
           (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true')
         run: |
           aws s3 sync frontend/dist/ s3://${{ steps.env.outputs.bucket }}/ \
