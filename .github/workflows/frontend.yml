@@ -89,9 +89,17 @@ jobs:
             echo ".env.development file exists"
             # VITE_で始まる環境変数のみ表示（機密情報を保護）
             grep "^VITE_" .env.development | sed 's/=.*/=***/' || echo "No VITE_ variables found"
+            # .env.developmentファイルから環境変数を読み込んで、ビルド時に明示的に設定
+            # これにより、Viteが確実に環境変数を読み込めるようにする
+            echo "Loading environment variables from .env.development..."
+            export $(grep -v '^#' .env.development | grep '^VITE_' | xargs)
+            echo "Environment variables loaded (values masked for security)"
           else
             echo "ERROR: .env.development file not found!"
+            exit 1
           fi
+          # ビルド前に環境変数を確認
+          echo "Building with --mode develop..."
           npm run build -- --mode develop
 
       - name: Upload build artifacts
