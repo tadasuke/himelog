@@ -12,18 +12,23 @@ class S3Service
     private ?string $cloudFrontUrl;
     private string $environment;
     private string $appUrl;
+    private string $storageType;
 
     public function __construct()
     {
         $this->environment = env('APP_ENV', 'production');
         $this->appUrl = env('APP_URL', 'http://localhost');
         
-        // ローカル環境以外の場合のみS3クライアントを初期化
-        if ($this->isLocalEnvironment()) {
-            $this->s3Client = null;
-            $this->bucket = '';
-            $this->cloudFrontUrl = null;
-        } else {
+        // PUBLIC_REVIEW_STORAGE_TYPE環境変数で保存先を指定（local または s3）
+        // 設定されていない場合は、APP_ENVがlocalの場合はlocal、それ以外はs3
+        $storageType = env('PUBLIC_REVIEW_STORAGE_TYPE');
+        if ($storageType === null || $storageType === '') {
+            $storageType = ($this->environment === 'local') ? 'local' : 's3';
+        }
+        $this->storageType = strtolower($storageType);
+        
+        // S3を使用する場合のみS3クライアントを初期化
+        if ($this->shouldUseS3()) {
             $this->bucket = env('AWS_S3_BUCKET', '');
             $this->cloudFrontUrl = env('AWS_CLOUDFRONT_URL', null);
 
@@ -35,7 +40,19 @@ class S3Service
                     'secret' => env('AWS_SECRET_ACCESS_KEY', ''),
                 ],
             ]);
+        } else {
+            $this->s3Client = null;
+            $this->bucket = '';
+            $this->cloudFrontUrl = null;
         }
+    }
+
+    /**
+     * S3を使用するかどうかを判定
+     */
+    private function shouldUseS3(): bool
+    {
+        return $this->storageType === 's3';
     }
 
     /**
@@ -43,7 +60,7 @@ class S3Service
      */
     public function isLocalEnvironment(): bool
     {
-        return $this->environment === 'local';
+        return !$this->shouldUseS3();
     }
 
     /**
@@ -63,10 +80,10 @@ class S3Service
      */
     public function uploadHtml(string $content, string $filename): string
     {
-        if ($this->isLocalEnvironment()) {
-            return $this->uploadHtmlToLocal($content, $filename);
-        } else {
+        if ($this->shouldUseS3()) {
             return $this->uploadHtmlToS3($content, $filename);
+        } else {
+            return $this->uploadHtmlToLocal($content, $filename);
         }
     }
 
@@ -179,10 +196,10 @@ class S3Service
      */
     public function deleteHtml(string $filename): void
     {
-        if ($this->isLocalEnvironment()) {
-            $this->deleteHtmlFromLocal($filename);
-        } else {
+        if ($this->shouldUseS3()) {
             $this->deleteHtmlFromS3($filename);
+        } else {
+            $this->deleteHtmlFromLocal($filename);
         }
     }
 
