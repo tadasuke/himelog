@@ -557,8 +557,7 @@ class RecordController extends Controller
             $s3Prefix = $s3Service->getS3Prefix();
             
             // PUBLIC_REVIEW_BASE_URL環境変数が設定されている場合はそれを使用
-            // config()を使用することで設定キャッシュが有効でも動作する
-            $publicBaseUrl = config('public_review.base_url');
+            $publicBaseUrl = config('aws.public_review.base_url');
             if ($publicBaseUrl) {
                 $publicUrl = rtrim($publicBaseUrl, '/') . '/' . $s3Prefix . $filename;
             } else if ($s3Service->isLocalEnvironment()) {
@@ -576,7 +575,6 @@ class RecordController extends Controller
                     $publicUrl = rtrim($cloudFrontUrl, '/') . '/' . $s3Prefix . $filename;
                 } else {
                     // S3 URLを生成
-                    // config()を使用することで設定キャッシュが有効でも動作する
                     $bucket = config('aws.s3.bucket', '');
                     $region = config('aws.s3.region', 'ap-northeast-1');
                     $publicUrl = "https://{$bucket}.s3.{$region}.amazonaws.com/{$s3Prefix}{$filename}";
