@@ -22,32 +22,36 @@ class S3Service
         
         // PUBLIC_REVIEW_STORAGE_TYPE環境変数で保存先を指定（local または s3）
         // 設定されていない場合は、APP_ENVがlocalの場合はlocal、それ以外はs3
-        $storageType = env('PUBLIC_REVIEW_STORAGE_TYPE');
+        // config()を使用することで設定キャッシュが有効でも動作する
+        $storageType = config('public_review.storage_type');
         if ($storageType === null || $storageType === '') {
             $storageType = ($this->environment === 'local') ? 'local' : 's3';
         }
         $this->storageType = strtolower($storageType);
         
         // PUBLIC_REVIEW_S3_PREFIX環境変数でS3のプレフィックスを指定（デフォルト: review/）
-        $s3Prefix = env('PUBLIC_REVIEW_S3_PREFIX', 'review/');
+        // config()を使用することで設定キャッシュが有効でも動作する
+        $s3Prefix = config('public_review.s3_prefix', 'review/');
         // 末尾にスラッシュがない場合は追加
         $this->s3Prefix = rtrim($s3Prefix, '/') . '/';
         
         // S3を使用する場合のみS3クライアントを初期化
         if ($this->shouldUseS3()) {
-            $this->bucket = env('AWS_S3_BUCKET', '');
-            $this->cloudFrontUrl = env('AWS_CLOUDFRONT_URL', null);
+            // config()を使用することで設定キャッシュが有効でも動作する
+            $this->bucket = config('aws.s3.bucket', '');
+            $this->cloudFrontUrl = config('aws.cloudfront.url', null);
 
             // S3Clientの設定を構築
             $s3Config = [
                 'version' => 'latest',
-                'region' => env('AWS_DEFAULT_REGION', 'ap-northeast-1'),
+                'region' => config('aws.s3.region', 'ap-northeast-1'),
             ];
 
             // 環境変数で認証情報が指定されている場合のみ追加
             // IAMロールを使用する場合は指定しない（SDKが自動的に取得）
-            $accessKeyId = env('AWS_ACCESS_KEY_ID', '');
-            $secretAccessKey = env('AWS_SECRET_ACCESS_KEY', '');
+            // config()を使用することで設定キャッシュが有効でも動作する
+            $accessKeyId = config('aws.s3.access_key_id', '');
+            $secretAccessKey = config('aws.s3.secret_access_key', '');
             
             if ($accessKeyId !== '' && $secretAccessKey !== '') {
                 $s3Config['credentials'] = [
@@ -146,7 +150,8 @@ class S3Service
             ]);
 
             // 公開URLを返す（PUBLIC_REVIEW_BASE_URL環境変数を使用）
-            $publicBaseUrl = env('PUBLIC_REVIEW_BASE_URL');
+            // config()を使用することで設定キャッシュが有効でも動作する
+            $publicBaseUrl = config('public_review.base_url');
             if (!$publicBaseUrl) {
                 // 環境変数が設定されていない場合は、ローカル環境の場合はポート番号8000を含める
                 $baseUrl = $this->appUrl;
@@ -194,7 +199,8 @@ class S3Service
             ]);
 
             // PUBLIC_REVIEW_BASE_URL環境変数が設定されている場合はそれを使用
-            $publicBaseUrl = env('PUBLIC_REVIEW_BASE_URL');
+            // config()を使用することで設定キャッシュが有効でも動作する
+            $publicBaseUrl = config('public_review.base_url');
             if ($publicBaseUrl) {
                 return rtrim($publicBaseUrl, '/') . '/' . $key;
             }
