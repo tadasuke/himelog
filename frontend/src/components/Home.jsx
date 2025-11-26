@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import PropTypes from 'prop-types'
 import './Home.css'
 import RecordForm from './RecordForm'
@@ -23,9 +23,16 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
   })
   const [unpublishingRecord, setUnpublishingRecord] = useState(null)
   const [recordPublicUrls, setRecordPublicUrls] = useState({})
+  const fetchingRef = useRef(false)
 
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async () => {
     if (!user?.id) return
+
+    // 既にローディング中の場合は何もしない
+    if (fetchingRef.current) {
+      console.log('Already fetching records, skipping duplicate call')
+      return
+    }
 
     // 認証トークンがない場合はAPIを呼び出さない
     const authToken = getAuthToken()
@@ -34,6 +41,7 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
       return
     }
 
+    fetchingRef.current = true
     setIsLoading(true)
     setError(null)
 
@@ -70,12 +78,16 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
       setError(error.message || '記録の取得中にエラーが発生しました')
     } finally {
       setIsLoading(false)
+      fetchingRef.current = false
     }
-  }
+  }, [user?.id, onRecordsLoaded])
 
   useEffect(() => {
-    fetchRecords()
-  }, [user?.id])
+    // ホーム画面の時のみfetchRecordsを呼ぶ
+    if (currentPage === 'home') {
+      fetchRecords()
+    }
+  }, [user?.id, currentPage, fetchRecords])
 
   // 公開済みのレビューの公開URLを取得
   useEffect(() => {
@@ -950,25 +962,12 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
                               handlePublishClick(record)
                             }}
                             disabled={publishingRecord === record.id}
-                            title="公開"
+                            title="公開する"
                             style={{ 
                               opacity: publishingRecord === record.id ? 0.5 : 1
                             }}
                           >
-                            {publishingRecord === record.id ? (
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="spinning">
-                                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeDasharray="31.416" strokeDashoffset="31.416">
-                                  <animate attributeName="stroke-dasharray" dur="2s" values="0 31.416;15.708 15.708;0 31.416;0 31.416" repeatCount="indefinite"/>
-                                  <animate attributeName="stroke-dashoffset" dur="2s" values="0;-15.708;-31.416;-31.416" repeatCount="indefinite"/>
-                                </circle>
-                              </svg>
-                            ) : (
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M18 13V19A2 2 0 0 1 16 21H5A2 2 0 0 1 3 19V8A2 2 0 0 1 5 6H11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                <path d="M15 3H21V9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                <path d="M10 14L21 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
-                            )}
+                            {publishingRecord === record.id ? '公開中...' : '公開する'}
                           </button>
                         )}
                       </>

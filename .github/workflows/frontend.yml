@@ -59,7 +59,7 @@ jobs:
             echo "aws_role=arn:aws:iam::034427362829:role/himelog_s3_production" >> $GITHUB_OUTPUT
           else
             echo "bucket=himelog.develop" >> $GITHUB_OUTPUT
-            echo "aws_role=arn:aws:iam::034427362829:role/himelog_s3_develop" >> $GITHUB_OUTPUT
+            echo "aws_role=arn:aws:iam::034427362829:role/himelog_s3_develop/app" >> $GITHUB_OUTPUT
           fi
 
       - name: Setup Node.js

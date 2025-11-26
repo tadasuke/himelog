@@ -111,24 +111,88 @@ function App() {
   const handleGoogleLogin = useCallback(async (credential) => {
     try {
       console.log('Sending token to backend...', { tokenLength: credential?.length })
-      const response = await fetch(getApiUrl('/api/auth/google/login'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token: credential }),
-      })
+      
+      if (!credential) {
+        console.error('No credential provided')
+        alert('ログインに失敗しました: 認証情報が取得できませんでした')
+        return
+      }
+      
+      const apiUrl = getApiUrl('/api/auth/google/login')
+      console.log('=== Google Login Debug Info ===')
+      console.log('API URL:', apiUrl)
+      console.log('Current location:', window.location.href)
+      console.log('Hostname:', window.location.hostname)
+      console.log('VITE_API_BASE_URL from env:', import.meta.env.VITE_API_BASE_URL)
+      console.log('================================')
+      
+      let response
+      try {
+        response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ token: credential }),
+        })
+      } catch (fetchError) {
+        console.error('Fetch error details:', {
+          name: fetchError.name,
+          message: fetchError.message,
+          stack: fetchError.stack,
+          apiUrl: apiUrl,
+          hostname: window.location.hostname,
+          origin: window.location.origin
+        })
+        
+        // ネットワークエラーの場合、より詳細な情報を提供
+        let errorMessage = 'ネットワークエラーが発生しました。'
+        
+        if (fetchError.message.includes('Failed to fetch')) {
+          errorMessage += '\n\n考えられる原因:\n'
+          errorMessage += '1. バックエンドサーバーが起動していない可能性があります\n'
+          errorMessage += '2. CORSの設定に問題がある可能性があります\n'
+          errorMessage += '3. プロキシの設定に問題がある可能性があります\n\n'
+          errorMessage += `API URL: ${apiUrl}\n`
+          errorMessage += `現在のURL: ${window.location.origin}`
+        }
+        
+        alert(`ログインに失敗しました: ${errorMessage}`)
+        throw fetchError
+      }
       
       console.log('Response status:', response.status)
       console.log('Response headers:', Object.fromEntries(response.headers.entries()))
       
       let data
       try {
-        data = await response.json()
+        const responseText = await response.text()
+        console.log('Response text:', responseText.substring(0, 500))
+        
+        if (!responseText) {
+          console.error('Empty response body')
+          alert(`ログインに失敗しました: サーバーからの応答が空です (${response.status})`)
+          return
+        }
+        
+        data = JSON.parse(responseText)
       } catch (jsonError) {
-        const text = await response.text()
-        console.error('Failed to parse JSON:', text)
-        alert(`ログインに失敗しました: サーバーからの応答が無効です (${response.status})`)
+        console.error('Failed to parse JSON:', jsonError)
+        console.error('Response status:', response.status)
+        console.error('Response headers:', Object.fromEntries(response.headers.entries()))
+        
+        let errorMessage = 'サーバーからの応答が無効です'
+        if (response.status === 0) {
+          errorMessage = 'ネットワークエラーが発生しました。サーバーに接続できません。'
+        } else if (response.status >= 500) {
+          errorMessage = 'サーバーエラーが発生しました。しばらくしてから再度お試しください。'
+        } else if (response.status === 401) {
+          errorMessage = '認証に失敗しました。再度ログインをお試しください。'
+        } else if (response.status === 404) {
+          errorMessage = 'APIエンドポイントが見つかりません。'
+        }
+        
+        alert(`ログインに失敗しました: ${errorMessage} (${response.status})`)
         return
       }
       
@@ -165,11 +229,27 @@ function App() {
         console.log('Login successful:', data.user)
       } else {
         console.error('Login failed - invalid response:', data)
-        alert('ログインに失敗しました: 無効なレスポンス')
+        console.error('Expected loggedIn and user, got:', { loggedIn: data.loggedIn, hasUser: !!data.user })
+        alert(`ログインに失敗しました: 無効なレスポンス (loggedIn: ${data.loggedIn}, hasUser: ${!!data.user})`)
       }
     } catch (error) {
       console.error('Login error:', error)
-      alert(`ログイン中にエラーが発生しました: ${error.message}`)
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      })
+      
+      let errorMessage = error.message || '不明なエラーが発生しました'
+      
+      // ネットワークエラーの場合
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        errorMessage = 'ネットワークエラーが発生しました。サーバーに接続できません。'
+      } else if (error.name === 'NetworkError' || error.message.includes('NetworkError')) {
+        errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してください。'
+      }
+      
+      alert(`ログイン中にエラーが発生しました: ${errorMessage}`)
     }
   }, [])
 

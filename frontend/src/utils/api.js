@@ -7,28 +7,52 @@
  */
 export const getApiBaseUrl = () => {
   const hostname = window.location.hostname
+  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
+  const envApiBaseUrl = import.meta.env.VITE_API_BASE_URL
   
-  // localhost または 127.0.0.1 の場合は相対パスを使用（Viteのプロキシが動作）
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    // ローカル環境でも環境変数が設定されている場合はそれを使用
-    if (import.meta.env.VITE_API_BASE_URL) {
-      return import.meta.env.VITE_API_BASE_URL
+  // デバッグ情報を出力
+  console.log('getApiBaseUrl debug:', {
+    hostname,
+    isLocalhost,
+    VITE_API_BASE_URL: envApiBaseUrl,
+  })
+  
+  // ローカル環境の場合
+  if (isLocalhost) {
+    // ローカル環境では、.env.localの設定（http://localhost:8000）を優先
+    // ただし、.env.developmentの本番URLが設定されている場合は無視する
+    if (envApiBaseUrl) {
+      // localhostを含むURL（.env.localの設定）の場合は使用
+      if (envApiBaseUrl.includes('localhost') || envApiBaseUrl.includes('127.0.0.1')) {
+        console.log('Using VITE_API_BASE_URL from .env.local:', envApiBaseUrl)
+        return envApiBaseUrl
+      } else {
+        // 本番URL（.env.developmentの設定）の場合は無視して、.env.localの設定を探すか相対パスを使用
+        console.warn('Ignoring production URL in localhost environment, using .env.local or relative path')
+        // .env.localに設定がある場合はそれを使用（Viteが正しく読み込んでいれば）
+        // ここでは相対パスを使用（Viteのプロキシが動作）
+        console.log('Using relative path for localhost (Vite proxy)')
+        return ''
+      }
+    } else {
+      // 環境変数が設定されていない場合は相対パスを使用（Viteのプロキシが動作）
+      console.log('Using relative path for localhost (Vite proxy)')
+      return ''
     }
-    // 環境変数が設定されていない場合は相対パスを使用
-    return ''
   }
   
-  // 環境変数でAPIベースURLが設定されている場合はそれを使用
-  if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL
+  // ローカル環境以外の場合
+  if (envApiBaseUrl) {
+    console.log('Using VITE_API_BASE_URL from env:', envApiBaseUrl)
+    return envApiBaseUrl
   }
   
   // 環境変数が設定されていない場合は警告を表示してエラーをスロー
   console.error(
-    'VITE_API_BASE_URL is not set. Please configure it in .env, .env.development, or .env.production file.'
+    'VITE_API_BASE_URL is not set. Please configure it in .env.local, .env.development, or .env.production file.'
   )
   throw new Error(
-    'VITE_API_BASE_URL is not set. Please configure it in .env, .env.development, or .env.production file.'
+    'VITE_API_BASE_URL is not set. Please configure it in .env.local, .env.development, or .env.production file.'
   )
 }
 

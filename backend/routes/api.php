@@ -6,6 +6,11 @@ use App\Http\Controllers\RecordController;
 use App\Http\Controllers\ShopTypeController;
 use Illuminate\Support\Facades\Log;
 
+// ヘルスチェックエンドポイント（ALB用）
+Route::get('/health', function () {
+    return response('', 200);
+});
+
 // テストエンドポイント
 Route::get('/test', function () {
     Log::info('Test endpoint called');
