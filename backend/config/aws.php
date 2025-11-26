@@ -6,7 +6,6 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'ap-northeast-1'),
         'access_key_id' => env('AWS_ACCESS_KEY_ID', ''),
         'secret_access_key' => env('AWS_SECRET_ACCESS_KEY', ''),
-        'cloudfront_url' => env('AWS_CLOUDFRONT_URL', null),
     ],
     'public_review' => [
         'storage_type' => env('PUBLIC_REVIEW_STORAGE_TYPE'),

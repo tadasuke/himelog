@@ -9,7 +9,6 @@ class S3Service
 {
     private ?S3Client $s3Client;
     private string $bucket;
-    private ?string $cloudFrontUrl;
     private string $environment;
     private string $appUrl;
     private string $storageType;
@@ -36,7 +35,6 @@ class S3Service
         // S3を使用する場合のみS3クライアントを初期化
         if ($this->shouldUseS3()) {
             $this->bucket = config('aws.s3.bucket', '');
-            $this->cloudFrontUrl = config('aws.s3.cloudfront_url');
 
             // S3Clientの設定を構築
             $s3Config = [
@@ -60,7 +58,6 @@ class S3Service
         } else {
             $this->s3Client = null;
             $this->bucket = '';
-            $this->cloudFrontUrl = null;
         }
     }
 
@@ -81,14 +78,6 @@ class S3Service
     }
 
     /**
-     * CloudFront URLを取得
-     */
-    public function getCloudFrontUrl(): ?string
-    {
-        return $this->cloudFrontUrl;
-    }
-
-    /**
      * S3のプレフィックスを取得
      */
     public function getS3Prefix(): string
@@ -101,7 +90,7 @@ class S3Service
      *
      * @param string $content HTMLコンテンツ
      * @param string $filename ファイル名（例: abc123def456.html）
-     * @return string 公開URL（CloudFront URL、S3 URL、またはローカルURL）
+     * @return string 公開URL（PUBLIC_REVIEW_BASE_URL、S3 URL、またはローカルURL）
      */
     public function uploadHtml(string $content, string $filename): string
     {
@@ -172,7 +161,7 @@ class S3Service
      *
      * @param string $content HTMLコンテンツ
      * @param string $filename ファイル名
-     * @return string 公開URL（CloudFront URLまたはS3 URL）
+     * @return string 公開URL（PUBLIC_REVIEW_BASE_URLまたはS3 URL）
      */
     private function uploadHtmlToS3(string $content, string $filename): string
     {
@@ -194,16 +183,14 @@ class S3Service
             ]);
 
             // PUBLIC_REVIEW_BASE_URL環境変数が設定されている場合はそれを使用
+            // 公開URLにはs3Prefixを含めない（PUBLIC_REVIEW_BASE_URL + ファイル名のみ）
             $publicBaseUrl = config('aws.public_review.base_url');
             if ($publicBaseUrl) {
-                return rtrim($publicBaseUrl, '/') . '/' . $key;
+                return rtrim($publicBaseUrl, '/') . '/' . $filename;
             }
 
-            // CloudFront URLが設定されている場合はそれを使用
-            if ($this->cloudFrontUrl) {
-                return rtrim($this->cloudFrontUrl, '/') . '/' . $key;
-            }
-
+            // PUBLIC_REVIEW_BASE_URLが設定されていない場合はS3の直接URLを返す
+            // S3の直接URLにはs3Prefixを含める（S3の実際のパス）
             return $this->s3Client->getObjectUrl($this->bucket, $key);
         } catch (\Exception $e) {
             Log::error('Failed to upload HTML to S3', [
