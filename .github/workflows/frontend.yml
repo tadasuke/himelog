@@ -83,7 +83,16 @@ jobs:
       - name: Build frontend for develop
         if: steps.env.outputs.env == 'develop'
         working-directory: ./frontend
-        run: npm run build -- --mode develop
+        run: |
+          echo "Checking .env.development file..."
+          if [ -f .env.development ]; then
+            echo ".env.development file exists"
+            # VITE_で始まる環境変数のみ表示（機密情報を保護）
+            grep "^VITE_" .env.development | sed 's/=.*/=***/' || echo "No VITE_ variables found"
+          else
+            echo "ERROR: .env.development file not found!"
+          fi
+          npm run build -- --mode develop
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

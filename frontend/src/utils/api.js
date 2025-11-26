@@ -52,7 +52,7 @@ export const getApiBaseUrl = () => {
     'VITE_API_BASE_URL is not set. Please configure it in .env.local, .env.development, or .env.production file.'
   )
   throw new Error(
-    'VITE_API_BASE_URL is not set. Please configure it in .env.local, .env.development, or .env.production file.'
+    'サーバーへの接続に失敗しました。しばらくしてから再度お試しください。'
   )
 }
 

@@ -10,6 +10,60 @@ import BottomNavigation from './components/BottomNavigation'
 import { getApiUrl, removeAuthToken, getAuthToken, setRefreshToken, setTokenExpiry, removeRefreshToken, removeTokenExpiry } from './utils/api'
 import './App.css'
 
+/**
+ * エラーメッセージをユーザー向けの安全なメッセージに変換
+ * システムの内部構造が分かるような情報を除去する
+ */
+const sanitizeErrorMessage = (errorMessage) => {
+  if (!errorMessage || typeof errorMessage !== 'string') {
+    return 'エラーが発生しました。しばらくしてから再度お試しください。'
+  }
+
+  // システムの内部構造が分かるキーワードを含む場合は、一般的なメッセージに置き換え
+  const sensitiveKeywords = [
+    'VITE_',
+    '.env',
+    'API URL',
+    'API endpoint',
+    'loggedIn',
+    'hasUser',
+    'CORS',
+    'プロキシ',
+    'proxy',
+    'サーバーからの応答が空',
+    'Failed to fetch',
+    'NetworkError',
+    'fetch',
+    'localhost',
+    '127.0.0.1',
+    'code_verifier',
+    'state',
+    'credential',
+    'token',
+    'refresh_token',
+    'access_token',
+  ]
+
+  const lowerMessage = errorMessage.toLowerCase()
+  for (const keyword of sensitiveKeywords) {
+    if (lowerMessage.includes(keyword.toLowerCase())) {
+      return 'エラーが発生しました。しばらくしてから再度お試しください。'
+    }
+  }
+
+  // ステータスコードのみを含む場合は、一般的なメッセージに置き換え
+  if (/\(\d{3}\)/.test(errorMessage) && errorMessage.length < 50) {
+    return 'エラーが発生しました。しばらくしてから再度お試しください。'
+  }
+
+  // その他の場合は、元のメッセージを返す（ただし、長すぎる場合は切り詰める）
+  if (errorMessage.length > 200) {
+    return 'エラーが発生しました。しばらくしてから再度お試しください。'
+  }
+
+  return errorMessage
+}
+
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [user, setUser] = useState(null)
@@ -145,18 +199,8 @@ function App() {
           origin: window.location.origin
         })
         
-        // ネットワークエラーの場合、より詳細な情報を提供
-        let errorMessage = 'ネットワークエラーが発生しました。'
-        
-        if (fetchError.message.includes('Failed to fetch')) {
-          errorMessage += '\n\n考えられる原因:\n'
-          errorMessage += '1. バックエンドサーバーが起動していない可能性があります\n'
-          errorMessage += '2. CORSの設定に問題がある可能性があります\n'
-          errorMessage += '3. プロキシの設定に問題がある可能性があります\n\n'
-          errorMessage += `API URL: ${apiUrl}\n`
-          errorMessage += `現在のURL: ${window.location.origin}`
-        }
-        
+        // ネットワークエラーの場合
+        const errorMessage = 'ネットワークエラーが発生しました。しばらくしてから再度お試しください。'
         alert(`ログインに失敗しました: ${errorMessage}`)
         throw fetchError
       }
@@ -171,7 +215,7 @@ function App() {
         
         if (!responseText) {
           console.error('Empty response body')
-          alert(`ログインに失敗しました: サーバーからの応答が空です (${response.status})`)
+          alert('ログインに失敗しました: サーバーからの応答が無効です')
           return
         }
         
@@ -183,16 +227,16 @@ function App() {
         
         let errorMessage = 'サーバーからの応答が無効です'
         if (response.status === 0) {
-          errorMessage = 'ネットワークエラーが発生しました。サーバーに接続できません。'
+          errorMessage = 'ネットワークエラーが発生しました。しばらくしてから再度お試しください。'
         } else if (response.status >= 500) {
           errorMessage = 'サーバーエラーが発生しました。しばらくしてから再度お試しください。'
         } else if (response.status === 401) {
           errorMessage = '認証に失敗しました。再度ログインをお試しください。'
         } else if (response.status === 404) {
-          errorMessage = 'APIエンドポイントが見つかりません。'
+          errorMessage = 'エラーが発生しました。しばらくしてから再度お試しください。'
         }
         
-        alert(`ログインに失敗しました: ${errorMessage} (${response.status})`)
+        alert(`ログインに失敗しました: ${errorMessage}`)
         return
       }
       
@@ -230,7 +274,7 @@ function App() {
       } else {
         console.error('Login failed - invalid response:', data)
         console.error('Expected loggedIn and user, got:', { loggedIn: data.loggedIn, hasUser: !!data.user })
-        alert(`ログインに失敗しました: 無効なレスポンス (loggedIn: ${data.loggedIn}, hasUser: ${!!data.user})`)
+        alert('ログインに失敗しました: 無効なレスポンス')
       }
     } catch (error) {
       console.error('Login error:', error)
@@ -240,13 +284,17 @@ function App() {
         stack: error.stack
       })
       
-      let errorMessage = error.message || '不明なエラーが発生しました'
+      // エラーメッセージを安全なメッセージに変換
+      let errorMessage = 'エラーが発生しました。しばらくしてから再度お試しください。'
       
       // ネットワークエラーの場合
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        errorMessage = 'ネットワークエラーが発生しました。サーバーに接続できません。'
-      } else if (error.name === 'NetworkError' || error.message.includes('NetworkError')) {
-        errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してください。'
+      if (error.name === 'TypeError' && error.message && error.message.includes('fetch')) {
+        errorMessage = 'ネットワークエラーが発生しました。しばらくしてから再度お試しください。'
+      } else if (error.name === 'NetworkError' || (error.message && error.message.includes('NetworkError'))) {
+        errorMessage = 'ネットワークエラーが発生しました。しばらくしてから再度お試しください。'
+      } else if (error.message) {
+        // エラーメッセージをサニタイズ
+        errorMessage = sanitizeErrorMessage(error.message)
       }
       
       alert(`ログイン中にエラーが発生しました: ${errorMessage}`)
@@ -275,7 +323,7 @@ function App() {
       } catch (jsonError) {
         const text = await response.text()
         console.error('Failed to parse JSON:', text)
-        alert(`ログインに失敗しました: サーバーからの応答が無効です (${response.status})`)
+        alert('ログインに失敗しました: サーバーからの応答が無効です')
         return
       }
       
@@ -323,7 +371,8 @@ function App() {
       }
     } catch (error) {
       console.error('X login error:', error)
-      alert(`ログイン中にエラーが発生しました: ${error.message}`)
+      const errorMessage = sanitizeErrorMessage(error.message)
+      alert(`ログイン中にエラーが発生しました: ${errorMessage}`)
     }
   }
 
