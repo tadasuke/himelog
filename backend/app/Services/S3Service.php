@@ -13,6 +13,7 @@ class S3Service
     private string $environment;
     private string $appUrl;
     private string $storageType;
+    private string $s3Prefix;
 
     public function __construct()
     {
@@ -27,19 +28,35 @@ class S3Service
         }
         $this->storageType = strtolower($storageType);
         
+        // PUBLIC_REVIEW_S3_PREFIX環境変数でS3のプレフィックスを指定（デフォルト: review/）
+        $s3Prefix = env('PUBLIC_REVIEW_S3_PREFIX', 'review/');
+        // 末尾にスラッシュがない場合は追加
+        $this->s3Prefix = rtrim($s3Prefix, '/') . '/';
+        
         // S3を使用する場合のみS3クライアントを初期化
         if ($this->shouldUseS3()) {
             $this->bucket = env('AWS_S3_BUCKET', '');
             $this->cloudFrontUrl = env('AWS_CLOUDFRONT_URL', null);
 
-            $this->s3Client = new S3Client([
+            // S3Clientの設定を構築
+            $s3Config = [
                 'version' => 'latest',
                 'region' => env('AWS_DEFAULT_REGION', 'ap-northeast-1'),
-                'credentials' => [
-                    'key' => env('AWS_ACCESS_KEY_ID', ''),
-                    'secret' => env('AWS_SECRET_ACCESS_KEY', ''),
-                ],
-            ]);
+            ];
+
+            // 環境変数で認証情報が指定されている場合のみ追加
+            // IAMロールを使用する場合は指定しない（SDKが自動的に取得）
+            $accessKeyId = env('AWS_ACCESS_KEY_ID', '');
+            $secretAccessKey = env('AWS_SECRET_ACCESS_KEY', '');
+            
+            if ($accessKeyId !== '' && $secretAccessKey !== '') {
+                $s3Config['credentials'] = [
+                    'key' => $accessKeyId,
+                    'secret' => $secretAccessKey,
+                ];
+            }
+
+            $this->s3Client = new S3Client($s3Config);
         } else {
             $this->s3Client = null;
             $this->bucket = '';
@@ -69,6 +86,14 @@ class S3Service
     public function getCloudFrontUrl(): ?string
     {
         return $this->cloudFrontUrl;
+    }
+
+    /**
+     * S3のプレフィックスを取得
+     */
+    public function getS3Prefix(): string
+    {
+        return $this->s3Prefix;
     }
 
     /**
@@ -152,7 +177,7 @@ class S3Service
     private function uploadHtmlToS3(string $content, string $filename): string
     {
         try {
-            $key = 'public-reviews/' . $filename;
+            $key = $this->s3Prefix . $filename;
 
             $this->s3Client->putObject([
                 'Bucket' => $this->bucket,
@@ -238,7 +263,7 @@ class S3Service
     private function deleteHtmlFromS3(string $filename): void
     {
         try {
-            $key = 'public-reviews/' . $filename;
+            $key = $this->s3Prefix . $filename;
 
             $this->s3Client->deleteObject([
                 'Bucket' => $this->bucket,

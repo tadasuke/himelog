@@ -554,28 +554,30 @@ class RecordController extends Controller
             // 公開URLを生成
             $s3Service = new \App\Services\S3Service();
             $filename = $record->public_token . '.html';
+            $s3Prefix = $s3Service->getS3Prefix();
             
             // PUBLIC_REVIEW_BASE_URL環境変数が設定されている場合はそれを使用
             $publicBaseUrl = env('PUBLIC_REVIEW_BASE_URL');
             if ($publicBaseUrl) {
-                $publicUrl = rtrim($publicBaseUrl, '/') . '/public-reviews/' . $filename;
+                $publicUrl = rtrim($publicBaseUrl, '/') . '/' . $s3Prefix . $filename;
             } else if ($s3Service->isLocalEnvironment()) {
                 // ローカル環境の場合
                 $appUrl = env('APP_URL', 'http://localhost:8000');
                 if (!str_contains($appUrl, ':8000') && str_contains($appUrl, 'localhost')) {
                     $appUrl = str_replace('http://localhost', 'http://localhost:8000', $appUrl);
                 }
+                // ローカル環境では public-reviews ディレクトリを使用
                 $publicUrl = rtrim($appUrl, '/') . '/public-reviews/' . $filename;
             } else {
                 // 本番環境の場合
                 $cloudFrontUrl = $s3Service->getCloudFrontUrl();
                 if ($cloudFrontUrl) {
-                    $publicUrl = rtrim($cloudFrontUrl, '/') . '/public-reviews/' . $filename;
+                    $publicUrl = rtrim($cloudFrontUrl, '/') . '/' . $s3Prefix . $filename;
                 } else {
                     // S3 URLを生成
                     $bucket = env('AWS_S3_BUCKET', '');
                     $region = env('AWS_DEFAULT_REGION', 'ap-northeast-1');
-                    $publicUrl = "https://{$bucket}.s3.{$region}.amazonaws.com/public-reviews/{$filename}";
+                    $publicUrl = "https://{$bucket}.s3.{$region}.amazonaws.com/{$s3Prefix}{$filename}";
                 }
             }
 
