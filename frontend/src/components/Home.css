@@ -117,6 +117,18 @@
   margin-top: 32px;
 }
 
+.chart-section {
+  margin-bottom: 32px;
+}
+
+.chart-section-title {
+  font-size: 20px;
+  font-weight: 500;
+  color: #e8e8e8;
+  margin-bottom: 16px;
+  letter-spacing: 0.2px;
+}
+
 .logs-section-title {
   font-size: 20px;
   font-weight: 500;

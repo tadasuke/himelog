@@ -93,6 +93,97 @@ class RecordService
     }
 
     /**
+     * グラフ表示用に過去10件の記録を取得
+     * 来店日の降順（最新が右側）でソートし、総合評価を含める
+     */
+    public function getRecentRecordsForChart(string $userId, int $limit = 10)
+    {
+        // 最新のレコードを取得（来店日または作成日の降順）
+        $records = Record::where('user_id', $userId)
+            ->orderByRaw('COALESCE(visit_date, created_at) DESC')
+            ->limit($limit)
+            ->get();
+
+        // 来店日の昇順にソート（左から右へ古い順→新しい順）
+        // visit_dateがない場合はcreated_atを使用
+        $sortedRecords = $records->sortBy(function ($record) {
+            return $record->visit_date ? $record->visit_date->timestamp : $record->created_at->timestamp;
+        })->values();
+
+        return $sortedRecords;
+    }
+
+    /**
+     * お店のタイプごとの集計を取得（円グラフ用）
+     */
+    public function getShopTypeStatistics(string $userId): array
+    {
+        $records = Record::where('user_id', $userId)
+            ->with('shopType')
+            ->get();
+
+        // お店のタイプごとに集計
+        $statistics = [];
+        foreach ($records as $record) {
+            $shopTypeName = $record->shop_type ?? '不明';
+            
+            if (!isset($statistics[$shopTypeName])) {
+                $statistics[$shopTypeName] = 0;
+            }
+            $statistics[$shopTypeName]++;
+        }
+
+        // 配列形式に変換（ラベルと値のペア）
+        $result = [];
+        foreach ($statistics as $shopTypeName => $count) {
+            $result[] = [
+                'label' => $shopTypeName,
+                'value' => $count
+            ];
+        }
+
+        // 件数の降順でソート
+        usort($result, function ($a, $b) {
+            return $b['value'] <=> $a['value'];
+        });
+
+        return $result;
+    }
+
+    /**
+     * 総合評価ごとの集計を取得（円グラフ用）
+     */
+    public function getOverallRatingStatistics(string $userId): array
+    {
+        $records = Record::where('user_id', $userId)
+            ->whereNotNull('overall_rating')
+            ->where('overall_rating', '>', 0)
+            ->get();
+
+        // 総合評価ごとに集計（1〜10星）
+        $statistics = [];
+        for ($rating = 1; $rating <= 10; $rating++) {
+            $count = $records->where('overall_rating', $rating)->count();
+            if ($count > 0) {
+                $statistics[] = [
+                    'label' => $rating . '星',
+                    'value' => $count
+                ];
+            }
+        }
+
+        // 評価の降順でソート（10星から1星の順）
+        usort($statistics, function ($a, $b) {
+            // ラベルから数値を抽出して比較
+            $ratingA = (int) str_replace('星', '', $a['label']);
+            $ratingB = (int) str_replace('星', '', $b['label']);
+            return $ratingB <=> $ratingA;
+        });
+
+        return $statistics;
+    }
+
+    /**
      * 記録を更新
      */
     public function updateRecord(Record $record, string $userId, array $data): Record

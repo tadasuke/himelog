@@ -3,6 +3,9 @@ import PropTypes from 'prop-types'
 import './Home.css'
 import RecordForm from './RecordForm'
 import StarRating from './StarRating'
+import OverallRatingChart from './OverallRatingChart'
+import OverallRatingPieChart from './OverallRatingPieChart'
+// import ShopTypeChart from './ShopTypeChart' // 将来使用する可能性があるためコメントアウト
 import { getApiUrl, fetchWithAuth, getAuthToken, handleAuthError } from '../utils/api'
 
 function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onShopClick, onGirlClick }) {
@@ -618,6 +621,23 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
 
       {currentPage === 'home' && !editingRecord && (
       <div className="logs-section">
+        {!isLoading && records.length > 0 && (
+          <>
+            <div className="chart-section">
+              <h2 className="chart-section-title">総合評価の推移</h2>
+              <OverallRatingChart user={user} />
+            </div>
+            <div className="chart-section">
+              <h2 className="chart-section-title">総合評価の割合</h2>
+              <OverallRatingPieChart user={user} />
+            </div>
+            {/* 利用したお店のタイプの円グラフは将来使用する可能性があるためコメントアウト */}
+            {/* <div className="chart-section">
+              <h2 className="chart-section-title">利用したお店のタイプ</h2>
+              <ShopTypeChart user={user} />
+            </div> */}
+          </>
+        )}
         {isLoading && (
           <div className="loading-message">読み込み中...</div>
         )}

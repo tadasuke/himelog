@@ -91,6 +91,109 @@ class RecordController extends Controller
     }
 
     /**
+     * グラフ表示用に過去10件の記録を取得
+     */
+    public function getRecentRecordsForChart(Request $request): JsonResponse
+    {
+        $this->logMethodStart(__FUNCTION__, ['request' => $request], __FILE__, __LINE__);
+        try {
+            // 認証されたユーザーIDを取得
+            $authenticatedUserId = $request->input('authenticated_user_id');
+            if (!$authenticatedUserId) {
+                return response()->json([
+                    'error' => 'Unauthorized',
+                    'message' => '認証が必要です'
+                ], 401);
+            }
+
+            $limit = (int) $request->query('limit', 10);
+            $records = $this->recordService->getRecentRecordsForChart($authenticatedUserId, $limit);
+
+            $result = response()->json([
+                'success' => true,
+                'records' => $records
+            ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('Recent records for chart fetch error: ' . $e->getMessage());
+            $result = response()->json([
+                'error' => 'Failed to fetch recent records for chart'
+            ], 500);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        }
+    }
+
+    /**
+     * お店のタイプごとの集計を取得（円グラフ用）
+     */
+    public function getShopTypeStatistics(Request $request): JsonResponse
+    {
+        $this->logMethodStart(__FUNCTION__, ['request' => $request], __FILE__, __LINE__);
+        try {
+            // 認証されたユーザーIDを取得
+            $authenticatedUserId = $request->input('authenticated_user_id');
+            if (!$authenticatedUserId) {
+                return response()->json([
+                    'error' => 'Unauthorized',
+                    'message' => '認証が必要です'
+                ], 401);
+            }
+
+            $statistics = $this->recordService->getShopTypeStatistics($authenticatedUserId);
+
+            $result = response()->json([
+                'success' => true,
+                'statistics' => $statistics
+            ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('Shop type statistics fetch error: ' . $e->getMessage());
+            $result = response()->json([
+                'error' => 'Failed to fetch shop type statistics'
+            ], 500);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        }
+    }
+
+    /**
+     * 総合評価ごとの集計を取得（円グラフ用）
+     */
+    public function getOverallRatingStatistics(Request $request): JsonResponse
+    {
+        $this->logMethodStart(__FUNCTION__, ['request' => $request], __FILE__, __LINE__);
+        try {
+            // 認証されたユーザーIDを取得
+            $authenticatedUserId = $request->input('authenticated_user_id');
+            if (!$authenticatedUserId) {
+                return response()->json([
+                    'error' => 'Unauthorized',
+                    'message' => '認証が必要です'
+                ], 401);
+            }
+
+            $statistics = $this->recordService->getOverallRatingStatistics($authenticatedUserId);
+
+            $result = response()->json([
+                'success' => true,
+                'statistics' => $statistics
+            ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('Overall rating statistics fetch error: ' . $e->getMessage());
+            $result = response()->json([
+                'error' => 'Failed to fetch overall rating statistics'
+            ], 500);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        }
+    }
+
+    /**
      * お店の種類とユーザーIDに基づいて登録済みのお店名を取得
      */
     public function getShopNames(Request $request): JsonResponse
