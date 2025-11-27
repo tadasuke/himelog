@@ -639,6 +639,7 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
                 <div 
                   key={record.id} 
                   className="log-card"
+                  onClick={() => toggleCard(record.id)}
                 >
                   <div className="log-card-header" style={{ position: 'relative' }}>
                     {record.public_token && (
@@ -710,20 +711,27 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
                       {record.girl_name}
                     </h3>
                   </div>
-                  <div className="log-card-ratings">
-                    <div className="log-card-rating-item">
+                  <div 
+                    className="log-card-ratings"
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr',
+                      rowGap: '12px'
+                    }}
+                  >
+                    <div className="log-card-rating-item" style={{ width: '100%' }}>
                       <span className="log-card-rating-label">総合</span>
                       <StarRating rating={record.overall_rating || 0} readonly={true} />
                     </div>
-                    <div className="log-card-rating-item">
+                    <div className="log-card-rating-item" style={{ width: '100%' }}>
                       <span className="log-card-rating-label">顔</span>
                       <StarRating rating={record.face_rating || 0} readonly={true} />
                     </div>
-                    <div className="log-card-rating-item">
+                    <div className="log-card-rating-item" style={{ width: '100%' }}>
                       <span className="log-card-rating-label">スタイル</span>
                       <StarRating rating={record.style_rating || 0} readonly={true} />
                     </div>
-                    <div className="log-card-rating-item">
+                    <div className="log-card-rating-item" style={{ width: '100%' }}>
                       <span className="log-card-rating-label">接客</span>
                       <StarRating rating={record.service_rating || 0} readonly={true} />
                     </div>

@@ -3,11 +3,11 @@
   gap: 3px;
   align-items: center;
   flex-wrap: nowrap;
-  flex-shrink: 0;
 }
 
 .star {
-  font-size: 18px;
+  font-size: clamp(14px, 1.6vw, 18px);
+  line-height: 1;
   color: #4a4a4a;
   cursor: default;
   transition: color 0.2s ease;
