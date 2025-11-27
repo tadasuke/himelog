@@ -121,16 +121,30 @@ function App() {
 
   // ページ遷移時にトップにスクロール
   useEffect(() => {
-    // requestAnimationFrameを使って、次のフレームでスクロール
-    // これにより、コンテンツがレンダリングされた後にスクロールが実行される
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: 0, behavior: 'auto' })
-        // iOS Safariで確実にスクロール位置をリセットするため、document.documentElementも設定
+    // iOS Chrome対応: より確実にスクロール位置をリセット
+    const scrollToTop = () => {
+      // 複数の方法でスクロール位置をリセット
+      if (window.scrollTo) {
+        window.scrollTo(0, 0)
+      }
+      if (document.documentElement) {
         document.documentElement.scrollTop = 0
+      }
+      if (document.body) {
         document.body.scrollTop = 0
+      }
+    }
+    
+    // コンテンツのレンダリング完了を待つ
+    const timeoutId = setTimeout(() => {
+      scrollToTop()
+      // iOS Chrome用: 念のためもう一度実行
+      requestAnimationFrame(() => {
+        scrollToTop()
       })
-    })
+    }, 50)
+    
+    return () => clearTimeout(timeoutId)
   }, [currentPage, selectedShop, selectedGirl])
 
   // Google Identity Services のスクリプトを読み込む
