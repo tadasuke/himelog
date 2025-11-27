@@ -82,13 +82,13 @@
   letter-spacing: 0.1px;
 }
 
-.shop-detail-total-price {
+.shop-detail-average-price {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid rgba(232, 106, 255, 0.1);
 }
 
-.shop-detail-total-price-label {
+.shop-detail-average-price-label {
   font-size: 12px;
   color: #6f8cff;
   font-weight: 500;
@@ -96,7 +96,7 @@
   margin-right: 8px;
 }
 
-.shop-detail-total-price-value {
+.shop-detail-average-price-value {
   font-size: 16px;
   font-weight: 600;
   color: #e86aff;

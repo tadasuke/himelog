@@ -91,6 +91,50 @@ class RecordController extends Controller
     }
 
     /**
+     * レビューを検索
+     */
+    public function search(Request $request): JsonResponse
+    {
+        $this->logMethodStart(__FUNCTION__, ['request' => $request], __FILE__, __LINE__);
+        try {
+            // 認証されたユーザーIDを取得
+            $authenticatedUserId = $request->input('authenticated_user_id');
+            if (!$authenticatedUserId) {
+                return response()->json([
+                    'error' => 'Unauthorized',
+                    'message' => '認証が必要です'
+                ], 401);
+            }
+
+            // 検索条件を取得
+            $filters = [
+                'shop_type_ids' => $request->input('shop_type_ids', []),
+                'overall_rating_min' => $request->input('overall_rating_min'),
+                'overall_rating_max' => $request->input('overall_rating_max'),
+                'visit_date_from' => $request->input('visit_date_from'),
+                'visit_date_to' => $request->input('visit_date_to'),
+            ];
+
+            $records = $this->recordService->searchRecords($authenticatedUserId, $filters);
+
+            $result = response()->json([
+                'success' => true,
+                'records' => $records
+            ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('Record search error: ' . $e->getMessage());
+            $result = response()->json([
+                'error' => 'Failed to search records',
+                'message' => $e->getMessage()
+            ], 500);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        }
+    }
+
+    /**
      * グラフ表示用に過去10件の記録を取得
      */
     public function getRecentRecordsForChart(Request $request): JsonResponse

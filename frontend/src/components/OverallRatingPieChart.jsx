@@ -7,10 +7,11 @@ import {
   Legend
 } from 'chart.js'
 import { Doughnut } from 'react-chartjs-2'
+import ChartDataLabels from 'chartjs-plugin-datalabels'
 import { getApiUrl, fetchWithAuth, getAuthToken, handleAuthError } from '../utils/api'
 import './OverallRatingPieChart.css'
 
-ChartJS.register(ArcElement, Tooltip, Legend)
+ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels)
 
 function OverallRatingPieChart({ user }) {
   const [chartData, setChartData] = useState(null)
@@ -53,18 +54,18 @@ function OverallRatingPieChart({ user }) {
           return
         }
 
-        // 色のパレットを定義（評価が高いほど明るい色）
+        // 色のパレットを定義（評価が高いほど良い色：低評価=青/緑系、高評価=赤系）
         const colors = [
-          'rgba(255, 107, 107, 1)',      // 1星: 赤
-          'rgba(255, 159, 64, 1)',       // 2星: オレンジ
-          'rgba(255, 206, 84, 1)',       // 3星: 黄
-          'rgba(255, 205, 86, 1)',       // 4星: イエロー
-          'rgba(201, 203, 207, 1)',      // 5星: グレー
-          'rgba(75, 192, 192, 1)',       // 6星: シアン
-          'rgba(54, 162, 235, 1)',       // 7星: ライトブルー
-          'rgba(74, 144, 226, 1)',       // 8星: 青
-          'rgba(111, 140, 255, 1)',      // 9星: ライトブルー
-          'rgba(232, 106, 255, 1)'       // 10星: 紫
+          'rgba(50, 150, 220, 1)',       // 1星: 明るい青（低評価）
+          'rgba(60, 180, 200, 1)',       // 2星: 青緑/シアン
+          'rgba(80, 200, 150, 1)',       // 3星: 明るい緑
+          'rgba(100, 200, 120, 1)',      // 4星: 緑
+          'rgba(180, 220, 120, 1)',      // 5星: 黄緑（中間）
+          'rgba(255, 220, 100, 1)',      // 6星: 黄色
+          'rgba(255, 200, 80, 1)',       // 7星: 黄オレンジ
+          'rgba(255, 150, 80, 1)',       // 8星: オレンジ
+          'rgba(255, 99, 99, 1)',        // 9星: 赤
+          'rgba(200, 50, 50, 1)'         // 10星: 暗い赤（最高評価）
         ]
 
         const labels = statistics.map(item => item.label)
@@ -106,37 +107,7 @@ function OverallRatingPieChart({ user }) {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        display: true,
-        position: 'right',
-        labels: {
-          color: '#e0e0e0',
-          font: {
-            size: 12
-          },
-          padding: 15,
-          generateLabels: function(chart) {
-            const data = chart.data
-            if (data.labels.length && data.datasets.length) {
-              return data.labels.map((label, i) => {
-                const dataset = data.datasets[0]
-                const value = dataset.data[i]
-                // 「星」を削除して数字のみ表示
-                const labelWithoutStar = label.replace('星', '')
-                return {
-                  text: `${labelWithoutStar} (${value}件)`,
-                  fillStyle: dataset.backgroundColor[i],
-                  strokeStyle: dataset.borderColor[i],
-                  lineWidth: dataset.borderWidth,
-                  fontColor: '#e0e0e0',
-                  textColor: '#e0e0e0',
-                  hidden: false,
-                  index: i
-                }
-              })
-            }
-            return []
-          }
-        }
+        display: false // 右側の凡例を非表示
       },
       tooltip: {
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -157,7 +128,36 @@ function OverallRatingPieChart({ user }) {
             return `${labelWithoutStar}: ${value}件 (${percentage}%)`
           }
         }
+      },
+      datalabels: {
+        display: function(context) {
+          // セグメントが小さすぎる場合は非表示
+          const dataset = context.dataset
+          const value = dataset.data[context.dataIndex]
+          const total = dataset.data.reduce((a, b) => a + b, 0)
+          const percentage = (value / total) * 100
+          return percentage >= 3 // 3%以上のセグメントのみ表示
+        },
+        color: '#ffffff',
+        font: {
+          weight: 'bold',
+          size: 13
+        },
+        formatter: function(value, context) {
+          const label = context.chart.data.labels[context.dataIndex]
+          const labelWithoutStar = label.replace('星', '')
+          const total = context.dataset.data.reduce((a, b) => a + b, 0)
+          const percentage = ((value / total) * 100).toFixed(1)
+          return `★${labelWithoutStar}\n${percentage}%`
+        },
+        textAlign: 'center',
+        textStrokeColor: 'rgba(0, 0, 0, 0.6)',
+        textStrokeWidth: 3,
+        padding: 4
       }
+    },
+    onHover: (event, activeElements) => {
+      event.native.target.style.cursor = activeElements.length > 0 ? 'pointer' : 'default'
     }
   }
 
@@ -188,7 +188,10 @@ function OverallRatingPieChart({ user }) {
   return (
     <div className="chart-container">
       <div className="chart-wrapper">
-        <Doughnut data={chartData} options={chartOptions} />
+        <Doughnut 
+          data={chartData} 
+          options={chartOptions}
+        />
       </div>
     </div>
   )

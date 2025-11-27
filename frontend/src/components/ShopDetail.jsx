@@ -446,13 +446,18 @@ function ShopDetail({ user, shopType, shopName, onGirlClick }) {
     return sum / ratingsWithValue.length
   }, [records])
 
-  // 利用料金の合計を計算
-  const totalPrice = useMemo(() => {
+  // 1回辺りの平均金額を計算
+  const averagePrice = useMemo(() => {
     if (!records || records.length === 0) return 0
     
-    return records
-      .map(record => record.price || 0)
-      .reduce((acc, price) => acc + price, 0)
+    const pricesWithValue = records
+      .map(record => record.price)
+      .filter(price => price !== null && price !== undefined && price > 0)
+    
+    if (pricesWithValue.length === 0) return 0
+    
+    const sum = pricesWithValue.reduce((acc, price) => acc + price, 0)
+    return sum / pricesWithValue.length
   }, [records])
 
   // 最終利用日を計算
@@ -695,10 +700,10 @@ function ShopDetail({ user, shopType, shopName, onGirlClick }) {
               <span className="shop-detail-visit-count-value">{records.length}回</span>
             </div>
           )}
-          {records.length > 0 && totalPrice > 0 && (
-            <div className="shop-detail-total-price">
-              <span className="shop-detail-total-price-label">利用料金合計</span>
-              <span className="shop-detail-total-price-value">¥{totalPrice.toLocaleString()}</span>
+          {records.length > 0 && averagePrice > 0 && (
+            <div className="shop-detail-average-price">
+              <span className="shop-detail-average-price-label">1回辺りの平均金額</span>
+              <span className="shop-detail-average-price-value">¥{Math.round(averagePrice).toLocaleString()}</span>
             </div>
           )}
           {records.length > 0 && averageOverallRating > 0 && (

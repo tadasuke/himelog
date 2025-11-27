@@ -30,6 +30,7 @@ Route::post('/auth/logout', [AuthController::class, 'logout']);
 Route::middleware([\App\Http\Middleware\AuthenticateUser::class])->group(function () {
     Route::post('/records', [RecordController::class, 'store']);
     Route::get('/records', [RecordController::class, 'index']);
+    Route::get('/records/search', [RecordController::class, 'search']);
     Route::get('/records/recent-for-chart', [RecordController::class, 'getRecentRecordsForChart']);
     Route::get('/records/overall-rating-statistics', [RecordController::class, 'getOverallRatingStatistics']);
     Route::get('/records/shop-type-statistics', [RecordController::class, 'getShopTypeStatistics']);

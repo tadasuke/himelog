@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import Login from './components/Login'
 import Home from './components/Home'
 import MyPage from './components/MyPage'
-import ShopList from './components/ShopList'
+import ReviewSearch from './components/ReviewSearch'
 import ShopDetail from './components/ShopDetail'
 import GirlList from './components/GirlList'
 import GirlDetail from './components/GirlDetail'
@@ -487,7 +487,7 @@ function App() {
     setSelectedShop({ shopType, shopName })
     // お店詳細画面に遷移する際は、ヒメ詳細画面を閉じる
     setSelectedGirl(null)
-    // お店詳細画面を表示する際は、お店メニューをアクティブにする
+    // お店詳細画面を表示する際は、検索メニューをアクティブにする
     setCurrentPage('discover')
     // ページ遷移時にトップにスクロール（useEffectで処理されるため、ここでは不要だが念のため）
     requestAnimationFrame(() => {
@@ -503,8 +503,8 @@ function App() {
     // お店詳細画面を閉じて、ヒメ詳細画面を表示
     setSelectedShop(null)
     setSelectedGirl(girlName)
-    // ヒメ詳細画面を表示する際は、ヒメメニューをアクティブにする
-    setCurrentPage('girls')
+    // ヒメ詳細画面を表示する際は、検索メニューをアクティブにする
+    setCurrentPage('discover')
     // ページ遷移時にトップにスクロール（useEffectで処理されるため、ここでは不要だが念のため）
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -549,7 +549,7 @@ function App() {
           ) : currentPage === 'mypage' ? (
             <MyPage user={user} onLogout={handleLogout} />
           ) : currentPage === 'discover' ? (
-            <ShopList user={user} onShopClick={handleShopClick} />
+            <ReviewSearch user={user} onShopClick={handleShopClick} onGirlClick={handleGirlClick} />
           ) : currentPage === 'girls' ? (
             <GirlList user={user} onShopClick={handleShopClick} onGirlClick={handleGirlClick} />
           ) : (

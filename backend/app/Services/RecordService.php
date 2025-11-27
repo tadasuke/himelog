@@ -93,6 +93,88 @@ class RecordService
     }
 
     /**
+     * レビューを検索
+     * 各記録にヒメの画像URL（最初の1枚目）を含める
+     *
+     * @param string $userId
+     * @param array $filters 検索条件
+     *   - shop_type_ids: array お店の種類IDの配列（複数選択可）
+     *   - overall_rating_min: int 総合評価の最小値
+     *   - overall_rating_max: int 総合評価の最大値
+     *   - visit_date_from: string 利用日の開始日（Y-m-d形式）
+     *   - visit_date_to: string 利用日の終了日（Y-m-d形式）
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function searchRecords(string $userId, array $filters = [])
+    {
+        $query = Record::where('user_id', $userId)
+            ->with('shopType');
+
+        // お店の種類でフィルタ（複数選択可）
+        if (!empty($filters['shop_type_ids']) && is_array($filters['shop_type_ids'])) {
+            $shopTypeIds = array_filter(array_map('intval', $filters['shop_type_ids']));
+            if (!empty($shopTypeIds)) {
+                $query->whereIn('shop_type_id', $shopTypeIds);
+            }
+        }
+
+        // 総合評価の範囲でフィルタ
+        if (isset($filters['overall_rating_min']) && $filters['overall_rating_min'] !== '') {
+            $minRating = (int) $filters['overall_rating_min'];
+            $query->where('overall_rating', '>=', $minRating);
+        }
+        if (isset($filters['overall_rating_max']) && $filters['overall_rating_max'] !== '') {
+            $maxRating = (int) $filters['overall_rating_max'];
+            $query->where('overall_rating', '<=', $maxRating);
+        }
+
+        // 利用日の範囲でフィルタ
+        if (!empty($filters['visit_date_from'])) {
+            $fromDate = $filters['visit_date_from'];
+            $query->where(function ($q) use ($fromDate) {
+                $q->where('visit_date', '>=', $fromDate)
+                  ->orWhere(function ($subQ) use ($fromDate) {
+                      $subQ->whereNull('visit_date')
+                           ->where('created_at', '>=', $fromDate);
+                  });
+            });
+        }
+        if (!empty($filters['visit_date_to'])) {
+            $toDate = $filters['visit_date_to'];
+            $query->where(function ($q) use ($toDate) {
+                $q->where('visit_date', '<=', $toDate)
+                  ->orWhere(function ($subQ) use ($toDate) {
+                      $subQ->whereNull('visit_date')
+                           ->where('created_at', '<=', $toDate);
+                  });
+            });
+        }
+
+        $records = $query->orderByRaw('COALESCE(visit_date, created_at) DESC')
+            ->get();
+
+        // 各記録にヒメの画像URL（最初の1枚目）を追加
+        foreach ($records as $record) {
+            $girlImageUrl = null;
+            if ($record->girl_name) {
+                $girl = Girl::where('user_id', $userId)
+                    ->where('girl_name', $record->girl_name)
+                    ->with(['girlImageUrls' => function ($query) {
+                        $query->orderBy('display_order')->limit(1);
+                    }])
+                    ->first();
+                
+                if ($girl && $girl->girlImageUrls && $girl->girlImageUrls->count() > 0) {
+                    $girlImageUrl = $girl->girlImageUrls->first()->image_url;
+                }
+            }
+            $record->girl_image_url = $girlImageUrl;
+        }
+
+        return $records;
+    }
+
+    /**
      * グラフ表示用に過去10件の記録を取得
      * 来店日の降順（最新が右側）でソートし、総合評価を含める
      */

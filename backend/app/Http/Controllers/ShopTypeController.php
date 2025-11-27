@@ -38,6 +38,19 @@ class ShopTypeController extends Controller
                 return $result;
             }
 
+            // ユーザーがレビューを書いたことがあるお店の種類IDを取得
+            $userShopTypeIds = Record::where('user_id', $userId)
+                ->distinct()
+                ->pluck('shop_type_id')
+                ->filter()
+                ->toArray();
+
+            // ユーザーがレビューを書いたことがあるお店の種類だけを取得
+            $userShopTypes = ShopType::whereIn('id', $userShopTypeIds)
+                ->orderBy('display_order', 'asc')
+                ->orderBy('name', 'asc')
+                ->get();
+
             // ユーザーの最新の記録のお店の種類を取得
             $latestRecord = Record::where('user_id', $userId)
                 ->orderBy('created_at', 'desc')
@@ -55,7 +68,7 @@ class ShopTypeController extends Controller
                 ->toArray();
 
             // 並び順を決定
-            $sortedShopTypes = $allShopTypes->sort(function ($a, $b) use ($latestShopTypeId, $shopTypeCounts) {
+            $sortedShopTypes = $userShopTypes->sort(function ($a, $b) use ($latestShopTypeId, $shopTypeCounts) {
                 $idA = $a->id;
                 $idB = $b->id;
                 
