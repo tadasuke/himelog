@@ -11,6 +11,6 @@ return [
     'faker_locale' => 'ja_JP',
     'key' => env('APP_KEY'),
     'cipher' => 'AES-256-CBC',
-    'public_review_footer_link_url' => env('PUBLIC_REVIEW_FOOTER_LINK_URL', ''),
+    'public_review_footer_link_url' => env('PUBLIC_REVIEW_FOOTER_LINK_URL'),
 ];
 

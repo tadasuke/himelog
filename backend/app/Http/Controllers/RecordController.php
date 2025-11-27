@@ -550,28 +550,7 @@ class RecordController extends Controller
             // 公開URLを生成
             $s3Service = new \App\Services\S3Service();
             $filename = $record->public_token . '.html';
-            $s3Prefix = $s3Service->getS3Prefix();
-            
-            // PUBLIC_REVIEW_BASE_URL環境変数が設定されている場合はそれを使用
-            // 公開URLにはs3Prefixを含めない（PUBLIC_REVIEW_BASE_URL + ファイル名のみ）
-            $publicBaseUrl = config('aws.public_review.base_url');
-            if ($publicBaseUrl) {
-                $publicUrl = rtrim($publicBaseUrl, '/') . '/' . $filename;
-            } else if ($s3Service->isLocalEnvironment()) {
-                // ローカル環境の場合
-                $appUrl = config('app.url', 'http://localhost:8000');
-                if (!str_contains($appUrl, ':8000') && str_contains($appUrl, 'localhost')) {
-                    $appUrl = str_replace('http://localhost', 'http://localhost:8000', $appUrl);
-                }
-                // ローカル環境では public-reviews ディレクトリを使用
-                $publicUrl = rtrim($appUrl, '/') . '/public-reviews/' . $filename;
-            } else {
-                // 本番環境の場合（PUBLIC_REVIEW_BASE_URLが設定されていない場合はS3の直接URLを生成）
-                // S3の直接URLにはs3Prefixを含める（S3の実際のパス）
-                $bucket = config('aws.s3.bucket', '');
-                $region = config('aws.s3.region', 'ap-northeast-1');
-                $publicUrl = "https://{$bucket}.s3.{$region}.amazonaws.com/{$s3Prefix}{$filename}";
-            }
+            $publicUrl = $s3Service->getPublicUrl($filename);
 
             $result = response()->json([
                 'success' => true,

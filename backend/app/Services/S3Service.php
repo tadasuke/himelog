@@ -86,6 +86,38 @@ class S3Service
     }
 
     /**
+     * 公開URLを生成（環境に応じて適切なURLを返す）
+     *
+     * @param string $filename ファイル名（例: abc123def456.html）
+     * @return string 公開URL
+     */
+    public function getPublicUrl(string $filename): string
+    {
+        // PUBLIC_REVIEW_BASE_URL環境変数が設定されている場合はそれを使用
+        $publicBaseUrl = config('aws.public_review.base_url');
+        if ($publicBaseUrl) {
+            // 公開URLにはs3Prefixを含めない（PUBLIC_REVIEW_BASE_URL + ファイル名のみ）
+            return rtrim($publicBaseUrl, '/') . '/' . $filename;
+        }
+
+        if ($this->isLocalEnvironment()) {
+            // ローカル環境の場合
+            $baseUrl = $this->appUrl;
+            if (!str_contains($baseUrl, ':8000') && str_contains($baseUrl, 'localhost')) {
+                $baseUrl = str_replace('http://localhost', 'http://localhost:8000', $baseUrl);
+                $baseUrl = str_replace('http://127.0.0.1', 'http://127.0.0.1:8000', $baseUrl);
+            }
+            // ローカル環境では public-reviews ディレクトリを使用
+            return rtrim($baseUrl, '/') . '/public-reviews/' . $filename;
+        } else {
+            // 本番環境の場合（PUBLIC_REVIEW_BASE_URLが設定されていない場合はS3の直接URLを生成）
+            // S3の直接URLにはs3Prefixを含める（S3の実際のパス）
+            $key = $this->s3Prefix . $filename;
+            return $this->s3Client->getObjectUrl($this->bucket, $key);
+        }
+    }
+
+    /**
      * HTMLファイルをアップロード（環境に応じてS3またはローカルに保存）
      *
      * @param string $content HTMLコンテンツ
@@ -134,19 +166,8 @@ class S3Service
                 'filename' => $filename,
             ]);
 
-            // 公開URLを返す（PUBLIC_REVIEW_BASE_URL環境変数を使用）
-            $publicBaseUrl = config('aws.public_review.base_url');
-            if (!$publicBaseUrl) {
-                // 環境変数が設定されていない場合は、ローカル環境の場合はポート番号8000を含める
-                $baseUrl = $this->appUrl;
-                if ($this->isLocalEnvironment() && !str_contains($baseUrl, ':8000')) {
-                    // ポート番号が含まれていない場合は追加
-                    $baseUrl = str_replace('http://localhost', 'http://localhost:8000', $baseUrl);
-                    $baseUrl = str_replace('http://127.0.0.1', 'http://127.0.0.1:8000', $baseUrl);
-                }
-                $publicBaseUrl = $baseUrl;
-            }
-            return rtrim($publicBaseUrl, '/') . '/' . $filePath;
+            // 公開URLを返す
+            return $this->getPublicUrl($filename);
         } catch (\Exception $e) {
             Log::error('Failed to upload HTML to local storage', [
                 'error' => $e->getMessage(),
@@ -182,16 +203,8 @@ class S3Service
                 'filename' => $filename,
             ]);
 
-            // PUBLIC_REVIEW_BASE_URL環境変数が設定されている場合はそれを使用
-            // 公開URLにはs3Prefixを含めない（PUBLIC_REVIEW_BASE_URL + ファイル名のみ）
-            $publicBaseUrl = config('aws.public_review.base_url');
-            if ($publicBaseUrl) {
-                return rtrim($publicBaseUrl, '/') . '/' . $filename;
-            }
-
-            // PUBLIC_REVIEW_BASE_URLが設定されていない場合はS3の直接URLを返す
-            // S3の直接URLにはs3Prefixを含める（S3の実際のパス）
-            return $this->s3Client->getObjectUrl($this->bucket, $key);
+            // 公開URLを返す
+            return $this->getPublicUrl($filename);
         } catch (\Exception $e) {
             Log::error('Failed to upload HTML to S3', [
                 'error' => $e->getMessage(),

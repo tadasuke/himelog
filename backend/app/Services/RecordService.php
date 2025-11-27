@@ -434,9 +434,24 @@ class RecordService
             $title = implode(' - ', $titleParts) . ' - ヒメログ';
         }
         
-        $description = $reviewText 
-            ? mb_substr(strip_tags($reviewHtml), 0, 120) . '...'
-            : "レビューです。";
+        // 総合評価の文字列を生成
+        $overallRatingText = '';
+        if ($record->overall_rating && $record->overall_rating > 0) {
+            $overallRatingText = "【総合:星{$record->overall_rating}】";
+        }
+        
+        // descriptionを生成（総合評価 + 感想）
+        $description = '';
+        if ($reviewText) {
+            $reviewTextForDescription = strip_tags($reviewHtml);
+            $description = $overallRatingText . mb_substr($reviewTextForDescription, 0, 120);
+            if (mb_strlen($reviewTextForDescription) > 120) {
+                $description .= '...';
+            }
+        } else {
+            // 感想がない場合は総合評価のみ（総合評価がある場合）
+            $description = $overallRatingText ? rtrim($overallRatingText, '】') . '】レビューです。' : "レビューです。";
+        }
 
         // お店の名前とヒメの名前の表示値を準備
         $shopNameDisplay = ($includeShopName && $record->shop_name) 
@@ -446,6 +461,13 @@ class RecordService
         $girlNameDisplay = ($includeGirlName && $record->girl_name) 
             ? htmlspecialchars($record->girl_name, ENT_QUOTES, 'UTF-8') 
             : '内緒';
+        
+        // h1タグ用のタイトル（リンク付き）
+        $footerLinkUrl = config('app.public_review_footer_link_url');
+        if (!$footerLinkUrl) {
+            throw new \Exception('PUBLIC_REVIEW_FOOTER_LINK_URL環境変数が設定されていません');
+        }
+        $h1Title = '<a href="' . htmlspecialchars($footerLinkUrl, ENT_QUOTES, 'UTF-8') . '">ヒメログ</a>';
 
         // 星評価のHTMLを生成（1-10段階評価に対応）
         $starHtml = function($rating) {
@@ -512,6 +534,15 @@ class RecordService
             color: #ffffff;
             border-bottom: 2px solid #4a90e2;
             padding-bottom: 12px;
+        }
+        h1 a {
+            color: #ffffff;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        h1 a:hover {
+            color: #6ba3ff;
+            text-decoration: underline;
         }
         .info-section {
             margin-bottom: 24px;
@@ -606,7 +637,7 @@ class RecordService
 </head>
 <body>
     <div class="container">
-        <h1>レビュー詳細</h1>
+        <h1>{$h1Title}</h1>
         
         <div class="info-section">
             <div class="info-item">
@@ -707,15 +738,9 @@ HTML;
 HTML;
         }
 
-        // フッターのリンクURLを取得（.envから）
-        $footerLinkUrl = env('PUBLIC_REVIEW_FOOTER_LINK_URL', '');
+        // フッターのリンクURLは既に取得済み（h1タグ生成時に取得）
         $footerText = 'ヒメログ - あなたの出会いを記録';
-        
-        if ($footerLinkUrl) {
-            $footerHtml = '<a href="' . htmlspecialchars($footerLinkUrl, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($footerText, ENT_QUOTES, 'UTF-8') . '</a>';
-        } else {
-            $footerHtml = htmlspecialchars($footerText, ENT_QUOTES, 'UTF-8');
-        }
+        $footerHtml = '<a href="' . htmlspecialchars($footerLinkUrl, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($footerText, ENT_QUOTES, 'UTF-8') . '</a>';
 
         $html .= <<<HTML
         
