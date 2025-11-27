@@ -320,8 +320,9 @@
   max-width: 100%;
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   flex-wrap: nowrap;
+  width: 100%;
 }
 
 .log-card-rating-label {

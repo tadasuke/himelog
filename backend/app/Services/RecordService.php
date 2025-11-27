@@ -466,6 +466,7 @@ class RecordService
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="https://7i4hlzyrelaa.hime-log.madfaction.net/favicon.svg" type="image/svg+xml">
     <title>{$title}</title>
     <meta name="description" content="{$description}">
     
@@ -473,12 +474,14 @@ class RecordService
     <meta property="og:type" content="article">
     <meta property="og:title" content="{$title}">
     <meta property="og:description" content="{$description}">
+    <meta property="og:image" content="https://7i4hlzyrelaa.hime-log.madfaction.net/favicon.png">
     <meta property="og:site_name" content="ヒメログ">
     
     <!-- Twitter -->
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="{$title}">
     <meta name="twitter:description" content="{$description}">
+    <meta name="twitter:image" content="https://7i4hlzyrelaa.hime-log.madfaction.net/favicon.png">
     
     <style>
         * {

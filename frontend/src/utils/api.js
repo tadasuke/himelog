@@ -157,7 +157,21 @@ export const isTokenValid = () => {
 export const refreshAccessToken = async () => {
   const refreshToken = getRefreshToken()
   if (!refreshToken) {
-    console.error('No refresh token available')
+    // リフレッシュトークンがない場合（Google認証など）
+    // アクセストークンが有効であれば、そのまま使用する
+    const authToken = getAuthToken()
+    if (authToken) {
+      console.log('No refresh token available, but access token exists. Using access token.')
+      return null // nullを返すが、アクセストークンは使用可能
+    }
+    // アクセストークンもない場合はログアウト処理を実行
+    console.warn('No refresh token and no access token available, logging out')
+    removeAuthToken()
+    removeRefreshToken()
+    removeTokenExpiry()
+    localStorage.removeItem('user')
+    localStorage.removeItem('isLoggedIn')
+    window.location.reload()
     return null
   }
 
@@ -234,11 +248,22 @@ export const getAuthHeaders = (options = {}) => {
  * @returns {Promise<Response>} fetchレスポンス
  */
 export const fetchWithAuth = async (url, options = {}) => {
-  // トークンが期限切れの場合は事前に更新
+  // トークンが期限切れの場合は事前に更新を試みる
   if (!isTokenValid()) {
     const refreshed = await refreshAccessToken()
+    // リフレッシュトークンがない場合でも、アクセストークンが存在する場合は続行
+    // refreshAccessToken内でログアウト処理が実行された場合は、ページがリロードされるためここには到達しない
     if (!refreshed) {
-      // トークンの更新に失敗した場合は通常のfetchを実行（401エラーになる）
+      // リフレッシュトークンがない場合、アクセストークンが有効かどうか確認
+      const authToken = getAuthToken()
+      if (!authToken) {
+        // アクセストークンもない場合は、既にログアウト処理が実行されているはず
+        return new Response(JSON.stringify({ error: 'Unauthorized', message: '認証が必要です' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+      // アクセストークンがある場合は、そのまま使用（Google認証など）
     }
   }
 
