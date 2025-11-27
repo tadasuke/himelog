@@ -3,7 +3,7 @@ import PropTypes from 'prop-types'
 import './ShopDetail.css'
 import StarRating from './StarRating'
 import RecordForm from './RecordForm'
-import { getApiUrl, fetchWithAuth, getAuthToken, handleAuthError } from '../utils/api'
+import { getApiUrl, fetchWithAuth, getAuthToken, handleAuthError, getAuthHeaders } from '../utils/api'
 
 function ShopDetail({ user, shopType, shopName, onGirlClick }) {
   const [records, setRecords] = useState([])
@@ -499,8 +499,8 @@ function ShopDetail({ user, shopType, shopName, onGirlClick }) {
                   href={recordPublicUrls[publishOptions.record.id]} 
                   target="_blank" 
                   rel="noopener noreferrer"
+                  className="public-url-link"
                   style={{ 
-                    color: '#4a90e2', 
                     textDecoration: 'underline',
                     fontSize: '13px',
                     wordBreak: 'break-all',

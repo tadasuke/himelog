@@ -821,6 +821,10 @@
   transition: color 0.3s ease;
 }
 
+.girl-detail-url-link:visited {
+  color: #6f8cff;
+}
+
 .girl-detail-url-link:hover {
   color: #e86aff;
   text-decoration: underline;

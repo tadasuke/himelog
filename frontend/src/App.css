@@ -38,3 +38,28 @@ a {
   -webkit-user-select: auto;
   user-select: auto;
 }
+
+/* リンクの基本スタイル */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* 訪問済みリンクの色を変更しない（親要素の色を継承） */
+a:visited {
+  color: inherit;
+}
+
+a:hover,
+a:active {
+  color: inherit;
+}
+
+/* 公開URLなどの外部リンクのスタイル */
+.public-url-link {
+  color: #4a90e2;
+}
+
+.public-url-link:visited {
+  color: #4a90e2;
+}

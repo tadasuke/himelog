@@ -697,8 +697,8 @@ function GirlDetail({ user, girlName, onShopClick }) {
                   href={recordPublicUrls[publishOptions.record.id]} 
                   target="_blank" 
                   rel="noopener noreferrer"
+                  className="public-url-link"
                   style={{ 
-                    color: '#4a90e2', 
                     textDecoration: 'underline',
                     fontSize: '13px',
                     wordBreak: 'break-all',

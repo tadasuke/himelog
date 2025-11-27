@@ -270,7 +270,8 @@ class RecordController extends Controller
                 ], 401);
             }
 
-            $record = Record::find($id);
+            $record = Record::where('user_id', $authenticatedUserId)
+                ->find($id);
             
             if (!$record) {
                 return response()->json([
@@ -412,7 +413,8 @@ class RecordController extends Controller
                 ], 401);
             }
 
-            $record = Record::find($id);
+            $record = Record::where('user_id', $authenticatedUserId)
+                ->find($id);
             
             if (!$record) {
                 return response()->json([
@@ -463,7 +465,8 @@ class RecordController extends Controller
                 ], 401);
             }
 
-            $record = Record::find($id);
+            $record = Record::where('user_id', $authenticatedUserId)
+                ->find($id);
             
             if (!$record) {
                 return response()->json([
@@ -526,20 +529,13 @@ class RecordController extends Controller
                 ], 401);
             }
 
-            $record = Record::find($id);
+            $record = Record::where('user_id', $authenticatedUserId)
+                ->find($id);
             
             if (!$record) {
                 return response()->json([
                     'error' => 'Record not found'
                 ], 404);
-            }
-
-            // 所有者チェック
-            if ($record->user_id !== $authenticatedUserId) {
-                return response()->json([
-                    'error' => 'Forbidden',
-                    'message' => 'この記録の公開URLを取得する権限がありません'
-                ], 403);
             }
 
             // 公開されていない場合
@@ -612,7 +608,8 @@ class RecordController extends Controller
                 ], 401);
             }
 
-            $record = Record::find($id);
+            $record = Record::where('user_id', $authenticatedUserId)
+                ->find($id);
             
             if (!$record) {
                 return response()->json([

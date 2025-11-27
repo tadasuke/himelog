@@ -27,3 +27,4 @@ backend/bootstrap/cache/*.php
 .DS_Store
 Thumbs.db
 
+docs/
