@@ -8,13 +8,21 @@ function MyPage({ user, onLogout }) {
     }
   }
 
+  // 表示するユーザー情報を決定（emailまたはusernameのみ）
+  const displayInfo = user ? (user.email || user.username) : null
+
   return (
     <div className="mypage-container">
       <div className="mypage-user-section">
-        {user && user.email && (
+        {user && displayInfo && (
           <div className="mypage-user-info">
             <div className="mypage-user-details">
-              <p className="mypage-user-email">{user.email}</p>
+              {user.email && (
+                <p className="mypage-user-email">{user.email}</p>
+              )}
+              {!user.email && user.username && (
+                <p className="mypage-user-email">@{user.username}</p>
+              )}
             </div>
           </div>
         )}
@@ -40,6 +48,7 @@ MyPage.propTypes = {
     id: PropTypes.string.isRequired,
     name: PropTypes.string,
     email: PropTypes.string,
+    username: PropTypes.string,
     avatar: PropTypes.string,
   }),
   onLogout: PropTypes.func.isRequired,

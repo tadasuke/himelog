@@ -602,7 +602,7 @@ function ShopDetail({ user, shopType, shopName, onGirlClick }) {
                 className="delete-confirm-btn"
                 onClick={handleConfirmPublish}
                 disabled={publishingRecord === publishOptions.record.id}
-                style={{ background: '#4a90e2' }}
+                style={{ background: '#4a90e2', color: '#ffffff' }}
               >
                 {publishingRecord === publishOptions.record.id 
                   ? '公開中...' 
