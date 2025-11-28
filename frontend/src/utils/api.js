@@ -297,7 +297,16 @@ export const refreshAccessToken = async () => {
   }
 
   try {
-    const response = await fetch(getApiUrl('/api/auth/x/refresh'), {
+    // Google認証かX認証かを判定（リフレッシュトークンの形式で判定）
+    // Googleのリフレッシュトークンは通常長い文字列、Xのリフレッシュトークンも同様
+    // より確実な方法として、localStorageに保存された認証方法を確認する
+    const authMethod = localStorage.getItem('authMethod') || 'x' // デフォルトはX
+    
+    const refreshEndpoint = authMethod === 'google' 
+      ? '/api/auth/google/refresh'
+      : '/api/auth/x/refresh'
+    
+    const response = await fetch(getApiUrl(refreshEndpoint), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -369,37 +378,22 @@ export const getAuthHeaders = (options = {}) => {
  * @returns {Promise<Response>} fetchレスポンス
  */
 export const fetchWithAuth = async (url, options = {}) => {
-  const refreshToken = getRefreshToken()
-  
-  // リフレッシュトークンがない場合（Google認証）、Google IDトークンの有効期限をチェック
-  if (!refreshToken) {
-    if (!isGoogleTokenValid()) {
-      console.log('Google token expired or expiring soon, attempting to refresh...')
-      const newToken = await refreshGoogleToken()
-      if (!newToken) {
-        // 新しいトークンを取得できなかった場合
-        console.warn('Failed to refresh Google token, proceeding with current token')
-        // ここではログアウトせず、APIリクエストを試みる（バックエンドで401が返される可能性がある）
+  // トークンが期限切れの場合は事前に更新を試みる
+  if (!isTokenValid()) {
+    const refreshed = await refreshAccessToken()
+    // リフレッシュトークンがない場合でも、アクセストークンが存在する場合は続行
+    // refreshAccessToken内でログアウト処理が実行された場合は、ページがリロードされるためここには到達しない
+    if (!refreshed) {
+      // リフレッシュトークンがない場合、アクセストークンが有効かどうか確認
+      const authToken = getAuthToken()
+      if (!authToken) {
+        // アクセストークンもない場合は、既にログアウト処理が実行されているはず
+        return new Response(JSON.stringify({ error: 'Unauthorized', message: '認証が必要です' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        })
       }
-    }
-  } else {
-    // リフレッシュトークンがある場合（X認証など）、既存のロジックを使用
-    if (!isTokenValid()) {
-      const refreshed = await refreshAccessToken()
-      // リフレッシュトークンがない場合でも、アクセストークンが存在する場合は続行
-      // refreshAccessToken内でログアウト処理が実行された場合は、ページがリロードされるためここには到達しない
-      if (!refreshed) {
-        // リフレッシュトークンがない場合、アクセストークンが有効かどうか確認
-        const authToken = getAuthToken()
-        if (!authToken) {
-          // アクセストークンもない場合は、既にログアウト処理が実行されているはず
-          return new Response(JSON.stringify({ error: 'Unauthorized', message: '認証が必要です' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json' }
-          })
-        }
-        // アクセストークンがある場合は、そのまま使用
-      }
+      // アクセストークンがある場合は、そのまま使用
     }
   }
 
@@ -407,31 +401,14 @@ export const fetchWithAuth = async (url, options = {}) => {
 
   // 401エラーの場合、トークンを更新して再試行
   if (response.status === 401) {
-    const refreshToken = getRefreshToken()
-    
-    if (!refreshToken) {
-      // Google認証の場合、新しいトークンを取得
-      console.log('401 error with Google auth, attempting to refresh token...')
-      const newToken = await refreshGoogleToken()
-      if (newToken) {
-        // トークンを更新したので、再度リクエストを送信
-        return fetch(url, getAuthHeaders(options))
-      } else {
-        // 新しいトークンを取得できなかった場合、認証エラー処理を実行
-        handleAuthError(response)
-        return response
-      }
+    const refreshed = await refreshAccessToken()
+    if (refreshed) {
+      // トークンを更新したので、再度リクエストを送信
+      return fetch(url, getAuthHeaders(options))
     } else {
-      // X認証の場合、既存のリフレッシュロジックを使用
-      const refreshed = await refreshAccessToken()
-      if (refreshed) {
-        // トークンを更新したので、再度リクエストを送信
-        return fetch(url, getAuthHeaders(options))
-      } else {
-        // トークンの更新に失敗した場合は、認証エラー処理を実行
-        handleAuthError(response)
-        return response
-      }
+      // トークンの更新に失敗した場合は、認証エラー処理を実行
+      handleAuthError(response)
+      return response
     }
   }
 

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>認証中... - ヒメログ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            background: linear-gradient(135deg, #0d0f14 0%, #161a22 100%);
+            color: #e8e8e8;
+        }
+        
+        .callback-container {
+            text-align: center;
+        }
+        
+        .spinner {
+            border: 3px solid rgba(232, 106, 255, 0.2);
+            border-top: 3px solid #e86aff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .message {
+            font-size: 16px;
+            color: #a0a0a0;
+        }
+        
+        .error {
+            color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            border: 1px solid rgba(255, 107, 107, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="callback-container">
+        <div class="spinner"></div>
+        <div class="message" id="message">認証を処理しています...</div>
+        <div class="error" id="error-message" style="display: none;"></div>
+    </div>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+        // 設定の取得
+        function getConfig() {
+            let apiBaseUrl = '';
+            const hostname = window.location.hostname;
+            const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+            
+            if (isLocalhost) {
+                apiBaseUrl = 'http://localhost:8000';
+            } else {
+                apiBaseUrl = window.location.origin.replace(/^https?:\/\/(app\.)?/, (match, app) => {
+                    if (app) {
+                        return window.location.protocol + '//' + window.location.hostname.replace('app.', '');
+                    }
+                    return window.location.origin;
+                });
+            }
+            
+            // ReactアプリのURLを取得（同じドメインなので相対パスを使用）
+            const reactAppUrl = window.REACT_APP_URL || '/';
+            
+            return { apiBaseUrl, reactAppUrl };
+        }
+
+        // エラーメッセージを表示
+        function showError(message) {
+            document.getElementById('error-message').textContent = message;
+            document.getElementById('error-message').style.display = 'block';
+            document.getElementById('message').textContent = '認証に失敗しました';
+            document.querySelector('.spinner').style.display = 'none';
+        }
+
+        // メッセージを更新
+        function updateMessage(text) {
+            document.getElementById('message').textContent = text;
+        }
+
+        // Google認証のコールバック処理
+        function handleGoogleCallback() {
+            // URLハッシュからIDトークンを取得（通常のOAuth 2.0フロー）
+            const hash = window.location.hash.substring(1);
+            const urlParams = new URLSearchParams(hash);
+            const idToken = urlParams.get('id_token');
+            const error = urlParams.get('error');
+            const errorDescription = urlParams.get('error_description');
+            
+            // URLパラメータからも確認（一部の環境ではURLパラメータで返ってくる場合がある）
+            const searchParams = new URLSearchParams(window.location.search);
+            const searchIdToken = searchParams.get('id_token');
+            const searchError = searchParams.get('error');
+            
+            // エラーチェック
+            if (error || searchError) {
+                const errorMsg = errorDescription || error || searchError || '認証に失敗しました';
+                showError('Google認証に失敗しました: ' + errorMsg);
+                return;
+            }
+            
+            // IDトークンを取得
+            const credential = idToken || searchIdToken;
+            
+            if (!credential) {
+                showError('認証情報が取得できませんでした');
+                return;
+            }
+            
+            // 認証トークンを使用してログイン
+            loginWithToken(credential, 'google');
+        }
+
+        // X認証のコールバック処理
+        async function handleXCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            const error = urlParams.get('error');
+            
+            // URLパラメータをクリア
+            window.history.replaceState({}, document.title, window.location.pathname);
+            
+            if (error) {
+                showError('X認証に失敗しました: ' + error);
+                return;
+            }
+            
+            if (!code || !state) {
+                showError('認証コードが取得できませんでした');
+                return;
+            }
+            
+            // セッションストレージから保存された情報を取得
+            const savedState = sessionStorage.getItem('x_auth_state');
+            const codeVerifier = sessionStorage.getItem('x_code_verifier');
+            
+            if (!savedState || savedState !== state || !codeVerifier) {
+                showError('認証情報が無効です');
+                return;
+            }
+            
+            updateMessage('X認証を完了しています...');
+            
+            // バックエンドで認証コードをトークンに交換
+            const config = getConfig();
+            const redirectUri = window.location.origin + '/login/callback.html';
+            
+            try {
+                const response = await fetch(`${config.apiBaseUrl}/api/auth/x/callback`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        code: code,
+                        code_verifier: codeVerifier,
+                        redirect_uri: redirectUri,
+                    }),
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || errorData.error || 'X認証に失敗しました');
+                }
+                
+                const data = await response.json();
+                
+                if (data.loggedIn && data.user && data.access_token) {
+                    // セッションストレージに保存
+                    sessionStorage.setItem('authToken', data.access_token);
+                    sessionStorage.setItem('user', JSON.stringify(data.user));
+                    sessionStorage.setItem('isLoggedIn', 'true');
+                    sessionStorage.setItem('authMethod', 'x');
+                    
+                    // クリーンアップ
+                    sessionStorage.removeItem('x_auth_state');
+                    sessionStorage.removeItem('x_code_verifier');
+                    
+                    if (data.refresh_token) {
+                        sessionStorage.setItem('refreshToken', data.refresh_token);
+                    }
+                    if (data.expires_in) {
+                        const expiry = Date.now() + (data.expires_in * 1000);
+                        sessionStorage.setItem('tokenExpiry', expiry.toString());
+                    }
+                    
+                    updateMessage('ログイン成功！リダイレクト中...');
+                    
+                    // Reactアプリにリダイレクト（同じドメインなので相対パス）
+                    const config = getConfig();
+                    const reactAppUrl = config.reactAppUrl || '/';
+                    console.log('Redirecting to React app:', reactAppUrl);
+                    setTimeout(() => {
+                        window.location.href = reactAppUrl;
+                    }, 500);
+                } else {
+                    throw new Error('無効なレスポンス');
+                }
+            } catch (error) {
+                console.error('X認証エラー:', error);
+                showError(error.message || 'X認証に失敗しました');
+                // クリーンアップ
+                sessionStorage.removeItem('x_auth_state');
+                sessionStorage.removeItem('x_code_verifier');
+            }
+        }
+
+        // バックエンドでログイン処理を実行
+        async function loginWithToken(token, provider) {
+            const config = getConfig();
+            
+            try {
+                updateMessage('ログイン処理中...');
+                
+                const apiUrl = `${config.apiBaseUrl}/api/auth/${provider}/login`;
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ token: token }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || errorData.error || 'ログインに失敗しました');
+                }
+
+                const data = await response.json();
+                
+                if (data.loggedIn && data.user) {
+                    // 認証トークンとユーザー情報をセッションストレージに保存
+                    sessionStorage.setItem('authToken', token);
+                    sessionStorage.setItem('user', JSON.stringify(data.user));
+                    sessionStorage.setItem('isLoggedIn', 'true');
+                    sessionStorage.setItem('authMethod', provider);
+                    
+                    if (data.refresh_token) {
+                        sessionStorage.setItem('refreshToken', data.refresh_token);
+                    }
+                    if (data.expires_in) {
+                        const expiry = Date.now() + (data.expires_in * 1000);
+                        sessionStorage.setItem('tokenExpiry', expiry.toString());
+                    }
+                    
+                    updateMessage('ログイン成功！リダイレクト中...');
+                    
+                    // Reactアプリにリダイレクト
+                    const currentConfig = getConfig();
+                    const reactAppUrl = currentConfig.reactAppUrl || 'http://localhost:5173';
+                    console.log('Redirecting to React app:', reactAppUrl);
+                    setTimeout(() => {
+                        window.location.href = reactAppUrl;
+                    }, 500);
+                } else {
+                    throw new Error('無効なレスポンス');
+                }
+            } catch (error) {
+                console.error('ログインエラー:', error);
+                showError(error.message || 'ログインに失敗しました');
+            }
+        }
+
+        // ページロード時の処理
+        document.addEventListener('DOMContentLoaded', () => {
+            // URLパラメータを確認して、Google認証かX認証かを判定
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            const hash = window.location.hash;
+            
+            // X認証の場合は、codeとstateがある
+            if (code && state) {
+                handleXCallback();
+            } 
+            // Google認証の場合は、hashにid_tokenがあるか、URLパラメータで返ってくる
+            else if (hash || window.location.search.includes('id_token')) {
+                handleGoogleCallback();
+            } else {
+                // URLパラメータがない場合は、少し待ってからエラーを表示
+                setTimeout(() => {
+                    if (!sessionStorage.getItem('authToken')) {
+                        showError('認証情報が取得できませんでした');
+                    }
+                }, 2000);
+            }
+        });
+    </script>
+</body>
+</html>
+

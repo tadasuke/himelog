@@ -21,6 +21,7 @@ Route::post('/auth/mock-login', [AuthController::class, 'mockLogin']);
 Route::get('/auth/google/redirect', [AuthController::class, 'googleRedirect']);
 Route::get('/auth/google/callback', [AuthController::class, 'googleCallback']);
 Route::post('/auth/google/login', [AuthController::class, 'googleLogin']);
+Route::post('/auth/google/refresh', [AuthController::class, 'googleRefresh']);
 Route::post('/auth/x/callback', [AuthController::class, 'xCallback']);
 Route::post('/auth/x/login', [AuthController::class, 'xLogin']);
 Route::post('/auth/x/refresh', [AuthController::class, 'xRefresh']);

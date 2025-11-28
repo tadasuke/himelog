@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ログイン - ヒメログ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            background: linear-gradient(135deg, #0d0f14 0%, #161a22 100%);
+        }
+        
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+        }
+        
+        .login-card {
+            background-color: #161a22;
+            border-radius: 20px;
+            padding: 32px 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4),
+                        0 0 0 1px rgba(232, 106, 255, 0.1);
+            border: 1px solid rgba(232, 106, 255, 0.15);
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        
+        .login-title {
+            font-size: 28px;
+            font-weight: 600;
+            color: #e8e8e8;
+            margin-bottom: 8px;
+            letter-spacing: 0.3px;
+            background: linear-gradient(135deg, #e86aff 0%, #6f8cff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+        }
+        
+        .login-subtitle {
+            font-size: 13px;
+            color: #a0a0a0;
+            letter-spacing: 0.2px;
+            line-height: 1.4;
+        }
+        
+        .google-login-btn {
+            width: 100%;
+            min-height: 48px;
+            padding: 14px 20px;
+            background: linear-gradient(135deg, rgba(232, 106, 255, 0.1) 0%, rgba(111, 140, 255, 0.1) 100%);
+            border: 1px solid rgba(232, 106, 255, 0.3);
+            border-radius: 12px;
+            color: #e8e8e8;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            margin-bottom: 0;
+        }
+        
+        .google-login-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(232, 106, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .google-login-btn:hover::before {
+            left: 100%;
+        }
+        
+        .google-login-btn:hover {
+            border-color: rgba(232, 106, 255, 0.5);
+            box-shadow: 0 0 20px rgba(232, 106, 255, 0.3),
+                        0 0 40px rgba(111, 140, 255, 0.2);
+            transform: translateY(-1px);
+        }
+        
+        .google-login-btn:active {
+            transform: scale(0.98);
+            background: linear-gradient(135deg, rgba(232, 106, 255, 0.15) 0%, rgba(111, 140, 255, 0.15) 100%);
+        }
+        
+        .google-login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .google-icon {
+            flex-shrink: 0;
+            width: 20px;
+            height: 20px;
+        }
+        
+        .login-divider {
+            display: flex;
+            align-items: center;
+            margin: 24px 0;
+            position: relative;
+        }
+        
+        .login-divider::before,
+        .login-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(232, 106, 255, 0.2);
+        }
+        
+        .divider-text {
+            padding: 0 16px;
+            color: #a0a0a0;
+            font-size: 13px;
+        }
+        
+        .x-login-btn {
+            width: 100%;
+            min-height: 48px;
+            padding: 14px 20px;
+            background: linear-gradient(135deg, rgba(232, 106, 255, 0.1) 0%, rgba(111, 140, 255, 0.1) 100%);
+            border: 1px solid rgba(232, 106, 255, 0.3);
+            border-radius: 12px;
+            color: #e8e8e8;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        
+        .x-login-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(232, 106, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .x-login-btn:hover::before {
+            left: 100%;
+        }
+        
+        .x-login-btn:hover {
+            border-color: rgba(232, 106, 255, 0.5);
+            box-shadow: 0 0 20px rgba(232, 106, 255, 0.3),
+                        0 0 40px rgba(111, 140, 255, 0.2);
+            transform: translateY(-1px);
+        }
+        
+        .x-login-btn:active {
+            transform: scale(0.98);
+            background: linear-gradient(135deg, rgba(232, 106, 255, 0.15) 0%, rgba(111, 140, 255, 0.15) 100%);
+        }
+        
+        .x-login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .x-icon {
+            flex-shrink: 0;
+            width: 20px;
+            height: 20px;
+        }
+        
+        .error-message {
+            color: #ff6b6b;
+            font-size: 14px;
+            text-align: center;
+            margin-top: 16px;
+            padding: 12px;
+            background: rgba(255, 107, 107, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 107, 107, 0.3);
+        }
+        
+        .loading-message {
+            color: #a0a0a0;
+            font-size: 14px;
+            text-align: center;
+            margin-top: 16px;
+        }
+        
+        @media (min-width: 768px) {
+            .login-card {
+                padding: 48px 40px;
+                border-radius: 16px;
+            }
+            
+            .login-title {
+                font-size: 36px;
+            }
+            
+            .login-subtitle {
+                font-size: 14px;
+            }
+            
+            .google-login-btn {
+                font-size: 16px;
+                padding: 14px 24px;
+            }
+            
+            .x-login-btn {
+                font-size: 16px;
+                padding: 14px 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <h1 class="login-title">ヒメログ</h1>
+                <p class="login-subtitle">プライベートログサービス</p>
+            </div>
+            <div id="error-message" class="error-message" style="display: none;"></div>
+            <div id="loading-message" class="loading-message" style="display: none;">認証中...</div>
+            <button id="google-login-btn" class="google-login-btn">
+                <svg class="google-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                <span>Googleでログイン</span>
+            </button>
+            <div class="login-divider">
+                <span class="divider-text">または</span>
+            </div>
+            <button id="x-login-btn" class="x-login-btn">
+                <svg class="x-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+                <span>Xでログイン</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 設定ファイルを読み込む（存在する場合） -->
+    <!-- 注意: config.jsが見つからない場合は、以下のコメント内に直接Client IDを設定できます -->
+    <!--
+    <script>
+        window.GOOGLE_CLIENT_ID = 'your-google-client-id-here';
+        window.X_CLIENT_ID = 'your-x-client-id-here';
+    </script>
+    -->
+    <script src="/login/config.js" onerror="console.warn('config.jsが見つかりませんでした。HTML内のコメントを解除して直接設定するか、config.jsファイルを作成してください。')"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+        // 設定の取得
+        function getConfig() {
+            // Google Client IDは環境変数から取得、または直接設定
+            // 本番環境では、サーバーサイドで設定を注入するか、環境変数ファイルから読み込む
+            const googleClientId = window.GOOGLE_CLIENT_ID || '';
+            const xClientId = window.X_CLIENT_ID || '';
+            
+            // デバッグ用: 設定が読み込まれているか確認
+            if (!googleClientId) {
+                console.warn('Google Client ID is not set. Check if config.js is loaded and window.GOOGLE_CLIENT_ID is set.');
+            }
+            
+            // APIベースURLを取得（現在のホストから推測）
+            let apiBaseUrl = '';
+            const hostname = window.location.hostname;
+            const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+            
+            if (isLocalhost) {
+                // ローカル環境では相対パスまたは localhost:8000 を使用
+                apiBaseUrl = 'http://localhost:8000';
+            } else {
+                // 本番環境では、現在のオリジンから推測
+                // 例: app.example.com の場合、api.example.com または同じオリジンを使用
+                apiBaseUrl = window.location.origin.replace(/^https?:\/\/(app\.)?/, (match, app) => {
+                    if (app) {
+                        return window.location.protocol + '//' + window.location.hostname.replace('app.', '');
+                    }
+                    return window.location.origin;
+                });
+            }
+            
+            // ReactアプリのURLを取得（同じドメインなので相対パスを使用）
+            const reactAppUrl = window.REACT_APP_URL || '/';
+            
+            return {
+                googleClientId,
+                xClientId,
+                apiBaseUrl,
+                reactAppUrl
+            };
+        }
+
+        // エラーメッセージを表示
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            document.getElementById('loading-message').style.display = 'none';
+        }
+
+        // ローディングメッセージを表示
+        function showLoading() {
+            document.getElementById('loading-message').style.display = 'block';
+            document.getElementById('error-message').style.display = 'none';
+        }
+
+        // ローディングメッセージを非表示
+        function hideLoading() {
+            document.getElementById('loading-message').style.display = 'none';
+        }
+
+        // Google認証の初期化と処理
+        function initGoogleAuth() {
+            console.log('initGoogleAuth called');
+            const config = getConfig();
+            console.log('Config:', { googleClientId: config.googleClientId ? 'set' : 'not set', apiBaseUrl: config.apiBaseUrl });
+            
+            // ボタンクリックイベントを設定（Client IDがなくても設定する）
+            document.getElementById('google-login-btn').addEventListener('click', () => {
+                console.log('Google login button clicked');
+                const currentConfig = getConfig();
+                
+                if (!currentConfig.googleClientId) {
+                    showError('Google Client IDが設定されていません。config.jsファイルを作成してください。');
+                    console.error('Google Client ID is not set');
+                    return;
+                }
+                
+                handleGoogleLoginClick(currentConfig);
+            });
+        }
+
+        // Googleログインボタンクリック時の処理
+        function handleGoogleLoginClick(config) {
+            console.log('handleGoogleLoginClick called', { 
+                hasClientId: !!config.googleClientId,
+                apiBaseUrl: config.apiBaseUrl 
+            });
+            
+            try {
+                showLoading();
+                // 通常のOAuth 2.0フローを使用して、現在のタブでリダイレクト
+                // 同じドメインなので、相対パスを使用
+                const redirectUri = window.location.origin + '/login/callback.html';
+                const nonce = generateNonce();
+                
+                console.log('Redirect URI:', redirectUri);
+                console.log('Nonce:', nonce);
+                
+                // セッションストレージにnonceを保存（コールバックで検証するため）
+                sessionStorage.setItem('google_nonce', nonce);
+                
+                // Google認証URLを生成してリダイレクト（現在のタブで）
+                const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+                    `client_id=${encodeURIComponent(config.googleClientId)}` +
+                    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+                    `&response_type=id_token` +
+                    `&scope=openid profile email` +
+                    `&nonce=${encodeURIComponent(nonce)}` +
+                    `&prompt=select_account`;
+                
+                console.log('Redirecting to Google:', authUrl.substring(0, 100) + '...');
+                window.location.href = authUrl;
+            } catch (error) {
+                console.error('Error in handleGoogleLoginClick:', error);
+                showError('Google認証の開始に失敗しました: ' + error.message);
+                hideLoading();
+            }
+        }
+
+
+        // X認証の処理
+        function initXAuth() {
+            const config = getConfig();
+            
+            if (!config.xClientId) {
+                console.warn('X Client IDが設定されていません。環境変数を設定するか、config.jsファイルを作成してください。');
+                // エラーは表示しない（開発環境では正常な場合がある）
+                document.getElementById('x-login-btn').disabled = true;
+                document.getElementById('x-login-btn').textContent = 'X認証は設定されていません';
+                return;
+            }
+
+            document.getElementById('x-login-btn').addEventListener('click', () => {
+                handleXLogin(config);
+            });
+        }
+
+        // X認証の開始
+        async function handleXLogin(config) {
+            try {
+                showLoading();
+                
+                // PKCEパラメータを生成
+                const codeVerifier = generateCodeVerifier();
+                const codeChallenge = await generateCodeChallenge(codeVerifier);
+                const redirectUri = window.location.origin + '/login/callback.html';
+                
+                // stateを生成
+                const state = generateState();
+                
+                // セッションストレージに保存
+                sessionStorage.setItem('x_code_verifier', codeVerifier);
+                sessionStorage.setItem('x_auth_state', state);
+                
+                // X認証URLを生成
+                const authUrl = `https://twitter.com/i/oauth2/authorize?` +
+                    `response_type=code` +
+                    `&client_id=${encodeURIComponent(config.xClientId)}` +
+                    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+                    `&scope=tweet.read users.read offline.access` +
+                    `&state=${encodeURIComponent(state)}` +
+                    `&code_challenge=${encodeURIComponent(codeChallenge)}` +
+                    `&code_challenge_method=S256`;
+                
+                // X認証ページにリダイレクト
+                window.location.href = authUrl;
+            } catch (error) {
+                console.error('X認証エラー:', error);
+                showError('X認証の開始に失敗しました');
+                hideLoading();
+            }
+        }
+
+        // バックエンドでログイン処理を実行
+        async function loginWithToken(token, provider) {
+            const config = getConfig();
+            
+            try {
+                const apiUrl = `${config.apiBaseUrl}/api/auth/${provider}/login`;
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ token: token }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || errorData.error || 'ログインに失敗しました');
+                }
+
+                const data = await response.json();
+                
+                if (data.loggedIn && data.user) {
+                    // 認証トークンとユーザー情報をセッションストレージに保存
+                    sessionStorage.setItem('authToken', token);
+                    sessionStorage.setItem('user', JSON.stringify(data.user));
+                    sessionStorage.setItem('isLoggedIn', 'true');
+                    sessionStorage.setItem('authMethod', provider);
+                    
+                    if (data.refresh_token) {
+                        sessionStorage.setItem('refreshToken', data.refresh_token);
+                    }
+                    if (data.expires_in) {
+                        const expiry = Date.now() + (data.expires_in * 1000);
+                        sessionStorage.setItem('tokenExpiry', expiry.toString());
+                    }
+                    
+                    // Reactアプリにリダイレクト（同じドメインなので相対パス）
+                    const reactAppUrl = config.reactAppUrl || '/';
+                    console.log('Redirecting to React app:', reactAppUrl);
+                    window.location.href = reactAppUrl;
+                } else {
+                    throw new Error('無効なレスポンス');
+                }
+            } catch (error) {
+                console.error('ログインエラー:', error);
+                showError(error.message || 'ログインに失敗しました');
+                hideLoading();
+            }
+        }
+
+        // PKCE用のcode_verifierを生成
+        function generateCodeVerifier() {
+            const array = new Uint8Array(32);
+            crypto.getRandomValues(array);
+            return btoa(String.fromCharCode(...array))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=/g, '');
+        }
+
+        // PKCE用のcode_challengeを生成
+        async function generateCodeChallenge(verifier) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(verifier);
+            const digest = await crypto.subtle.digest('SHA-256', data);
+            return btoa(String.fromCharCode(...new Uint8Array(digest)))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=/g, '');
+        }
+
+        // stateを生成
+        function generateState() {
+            const array = new Uint8Array(16);
+            crypto.getRandomValues(array);
+            return btoa(String.fromCharCode(...array))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=/g, '');
+        }
+
+        // nonceを生成
+        function generateNonce() {
+            const array = new Uint8Array(16);
+            crypto.getRandomValues(array);
+            return btoa(String.fromCharCode(...array))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=/g, '');
+        }
+
+        // ページロード時の初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOMContentLoaded - Initializing auth');
+            console.log('window.GOOGLE_CLIENT_ID:', window.GOOGLE_CLIENT_ID ? 'set' : 'not set');
+            console.log('window.X_CLIENT_ID:', window.X_CLIENT_ID ? 'set' : 'not set');
+            
+            initGoogleAuth();
+            initXAuth();
+        });
+        
+        // 念のため、window.onloadでも初期化（config.jsが遅延読み込みされる場合に備える）
+        window.addEventListener('load', () => {
+            console.log('window.load - Re-checking config');
+            // 既に設定されている場合は何もしない
+            const config = getConfig();
+            if (!config.googleClientId && window.GOOGLE_CLIENT_ID) {
+                console.log('Google Client ID found after load, re-initializing');
+                initGoogleAuth();
+            }
+        });
+    </script>
+</body>
+</html>
+

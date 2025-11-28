@@ -147,8 +147,10 @@ php artisan serve
 
 #### 承認済みのリダイレクト URI
 以下のURIを追加してください：
-- `http://localhost:8000/api/auth/google/callback`
+- `http://localhost:8000/api/auth/google/callback` (旧方式用)
 - `http://localhost:5173` (開発環境用)
+- `http://localhost:8000/login/callback.html` (静的ログインページ用)
+- 本番環境の場合: `https://yourdomain.com/login/callback.html`
 
 ### 2-1. 403エラーの解決方法
 
@@ -183,6 +185,51 @@ GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 GOOGLE_REDIRECT_URI=http://localhost:8000/api/auth/google/callback
 ```
+
+### 3-1. 静的ログインページの設定（別タブが開かないようにするための設定）
+
+静的ログインページを使用する場合、以下の設定が必要です：
+
+#### 設定ファイルの作成
+
+`frontend/public/login/config.js` ファイルを作成し、以下の内容を記述：
+
+```javascript
+// Google Client ID
+window.GOOGLE_CLIENT_ID = 'your-google-client-id-here';
+
+// X Client ID  
+window.X_CLIENT_ID = 'your-x-client-id-here';
+
+// ReactアプリのURL（認証成功後のリダイレクト先）
+// 同じドメインなので相対パスを使用
+window.REACT_APP_URL = '/';
+```
+
+または、`frontend/public/login/config.js.example` を `config.js` にコピーして編集してください。
+
+**注意**: `config.js` ファイルは `.gitignore` に追加することを推奨します（機密情報を含むため）。
+
+#### 静的ログインページへのアクセス
+
+静的ログインページは `/login/index.html` でアクセスできます。
+
+- 開発環境: `http://localhost:5173/login/index.html` (Viteの開発サーバーで配信)
+- 本番環境: `https://yourdomain.com/login/index.html` (ビルド後のReactアプリと一緒に配信)
+
+#### Google認証のリダイレクトURI設定
+
+静的ログインページを使用する場合、Google Cloud Consoleの「承認済みのリダイレクト URI」に以下を追加：
+
+- `http://localhost:5173/login/callback.html` (開発環境)
+- `https://yourdomain.com/login/callback.html` (本番環境)
+
+**重要なポイント**:
+- 静的ログインページとReactアプリは同じドメイン（`http://localhost:5173`）で動作します
+- これにより、`sessionStorage`や`localStorage`を共有できるため、認証情報の引き継ぎが簡単になります
+- 静的ログインページを使用すると、Google認証時に別タブが開かなくなります（現在のタブでリダイレクトされます）
+- 認証成功後、自動的にReactアプリ（`/`）にリダイレクトされます
+- 認証情報はセッションストレージからローカルストレージに自動的に移行されます
 
 ## サーバー側の初回セットアップ（EC2）
 

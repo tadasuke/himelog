@@ -73,6 +73,54 @@ function App() {
 
   // ページロード時にローカルストレージからログイン状態を復元
   useEffect(() => {
+    // セッションストレージから認証情報を確認（静的ログインページから移行された場合）
+    const sessionAuthToken = sessionStorage.getItem('authToken')
+    const sessionUser = sessionStorage.getItem('user')
+    const sessionIsLoggedIn = sessionStorage.getItem('isLoggedIn')
+    const sessionRefreshToken = sessionStorage.getItem('refreshToken')
+    const sessionTokenExpiry = sessionStorage.getItem('tokenExpiry')
+    const sessionAuthMethod = sessionStorage.getItem('authMethod')
+    
+    // セッションストレージに認証情報がある場合は、ローカルストレージに移行
+    if (sessionAuthToken && sessionUser && sessionIsLoggedIn === 'true') {
+      try {
+        // ローカルストレージに移行
+        localStorage.setItem('authToken', sessionAuthToken)
+        localStorage.setItem('user', sessionUser)
+        localStorage.setItem('isLoggedIn', 'true')
+        if (sessionRefreshToken) {
+          localStorage.setItem('refreshToken', sessionRefreshToken)
+        }
+        if (sessionTokenExpiry) {
+          localStorage.setItem('tokenExpiry', sessionTokenExpiry)
+        }
+        if (sessionAuthMethod) {
+          localStorage.setItem('authMethod', sessionAuthMethod)
+        }
+        
+        // セッションストレージをクリア
+        sessionStorage.removeItem('authToken')
+        sessionStorage.removeItem('user')
+        sessionStorage.removeItem('isLoggedIn')
+        sessionStorage.removeItem('refreshToken')
+        sessionStorage.removeItem('tokenExpiry')
+        sessionStorage.removeItem('authMethod')
+        
+        // ユーザー情報を復元
+        const user = JSON.parse(sessionUser)
+        setUser(user)
+        setIsLoggedIn(true)
+        setCurrentPage('home')
+        console.log('Login state restored from sessionStorage:', user)
+        return
+      } catch (error) {
+        console.error('Failed to restore from sessionStorage:', error)
+        // セッションストレージをクリア
+        sessionStorage.clear()
+      }
+    }
+    
+    // 通常のローカルストレージからの復元処理
     const savedUser = localStorage.getItem('user')
     const savedIsLoggedIn = localStorage.getItem('isLoggedIn')
     const authToken = getAuthToken()
