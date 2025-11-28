@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ログイン - ヒメログ</title>
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+    <link rel="apple-touch-icon" href="../favicon.svg" />
     <style>
         * {
             margin: 0;
@@ -554,6 +556,9 @@
                 .replace(/=/g, '');
         }
 
+        // リダイレクトフラグ（重複リダイレクトを防ぐ）
+        let redirecting = false;
+
         // ページロード時の初期化
         document.addEventListener('DOMContentLoaded', () => {
             // 既にログイン済みの場合はReactアプリにリダイレクト
@@ -562,9 +567,17 @@
             const sessionUser = sessionStorage.getItem('user') || localStorage.getItem('user');
             const sessionIsLoggedIn = sessionStorage.getItem('isLoggedIn') || localStorage.getItem('isLoggedIn');
             
+            // 認証情報がある場合でも、Reactアプリが認証状態を復元できるように少し待つ
             if ((sessionAuthToken || localStorageAuthToken) && sessionUser && sessionIsLoggedIn === 'true') {
                 console.log('Already logged in, redirecting to app');
-                window.location.href = '/';
+                // リダイレクトフラグを設定
+                redirecting = true;
+                // 少し待ってからリダイレクト（Reactアプリの初期化を待つ）
+                setTimeout(() => {
+                    if (redirecting) {
+                        window.location.href = '/';
+                    }
+                }, 100);
                 return;
             }
             
@@ -578,6 +591,11 @@
         
         // 念のため、window.onloadでも初期化（config.jsが遅延読み込みされる場合に備える）
         window.addEventListener('load', () => {
+            // 既にリダイレクト中の場合は何もしない
+            if (redirecting) {
+                return;
+            }
+            
             // 既にログイン済みの場合はReactアプリにリダイレクト
             const sessionAuthToken = sessionStorage.getItem('authToken');
             const localStorageAuthToken = localStorage.getItem('authToken');
@@ -586,6 +604,7 @@
             
             if ((sessionAuthToken || localStorageAuthToken) && sessionUser && sessionIsLoggedIn === 'true') {
                 console.log('Already logged in (onload), redirecting to app');
+                redirecting = true;
                 window.location.href = '/';
                 return;
             }

@@ -595,10 +595,28 @@ function App() {
     const sessionUser = sessionStorage.getItem('user')
     const sessionIsLoggedIn = sessionStorage.getItem('isLoggedIn')
     
-    if (sessionAuthToken && sessionUser && sessionIsLoggedIn === 'true') {
-      // 認証情報がセッションストレージにある場合は、移行処理が完了するまで待つ
+    // ローカルストレージにも認証情報がある場合は、復元処理が完了するまで待つ
+    const localStorageAuthToken = localStorage.getItem('authToken')
+    const localStorageUser = localStorage.getItem('user')
+    const localStorageIsLoggedIn = localStorage.getItem('isLoggedIn')
+    
+    if ((sessionAuthToken && sessionUser && sessionIsLoggedIn === 'true') ||
+        (localStorageAuthToken && localStorageUser && localStorageIsLoggedIn === 'true')) {
+      // 認証情報がある場合は、復元処理が完了するまで待つ
       // （最初のuseEffectで処理される）
-      return
+      // 少し待ってから再度チェック（認証情報の復元を待つ）
+      const timeoutId = setTimeout(() => {
+        // 認証情報が復元されていない場合のみリダイレクト
+        if (!isLoggedIn) {
+          const currentPath = window.location.pathname
+          // ログインページ以外の場合のみリダイレクト
+          if (currentPath !== '/login/index.html' && !currentPath.startsWith('/login/')) {
+            window.location.href = '/login/index.html'
+          }
+        }
+      }, 500) // 500ms待ってからチェック
+      
+      return () => clearTimeout(timeoutId)
     }
     
     if (!isLoggedIn) {
