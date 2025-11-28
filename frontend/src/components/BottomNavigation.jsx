@@ -33,17 +33,14 @@ function BottomNavigation({ user, currentPage, onNavigate }) {
       )
     },
     {
-      id: 'girls',
-      label: 'ヒメ',
+      id: 'records',
+      label: '記録',
       icon: (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="7.5" r="3.5" stroke="currentColor" strokeWidth="2"/>
-          <path d="M6 21C6 18.2386 8.23858 16 11 16H13C15.7614 16 18 18.2386 18 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          <path d="M8 11C8 11 9 10 12 10C15 10 16 11 16 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          <path d="M10 2.5L10.5 1.5L12 1.5L13.5 1.5L14 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M10.5 1.5L10.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          <path d="M13.5 1.5L13.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          <path d="M7 16L12 20L17 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <rect x="4" y="14" width="3" height="6" rx="0.5" fill="currentColor"/>
+          <rect x="9" y="10" width="3" height="10" rx="0.5" fill="currentColor"/>
+          <rect x="14" y="6" width="3" height="14" rx="0.5" fill="currentColor"/>
+          <rect x="19" y="12" width="3" height="8" rx="0.5" fill="currentColor"/>
         </svg>
       )
     },

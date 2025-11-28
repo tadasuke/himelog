@@ -7,10 +7,11 @@ import {
   Legend
 } from 'chart.js'
 import { Doughnut } from 'react-chartjs-2'
+import ChartDataLabels from 'chartjs-plugin-datalabels'
 import { getApiUrl, fetchWithAuth, getAuthToken, handleAuthError } from '../utils/api'
 import './ShopTypeChart.css'
 
-ChartJS.register(ArcElement, Tooltip, Legend)
+ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels)
 
 function ShopTypeChart({ user }) {
   const [chartData, setChartData] = useState(null)
@@ -103,35 +104,7 @@ function ShopTypeChart({ user }) {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        display: true,
-        position: 'right',
-        labels: {
-          color: '#e0e0e0',
-          font: {
-            size: 12
-          },
-          padding: 15,
-          generateLabels: function(chart) {
-            const data = chart.data
-            if (data.labels.length && data.datasets.length) {
-              return data.labels.map((label, i) => {
-                const dataset = data.datasets[0]
-                const value = dataset.data[i]
-                return {
-                  text: `${label} (${value}件)`,
-                  fillStyle: dataset.backgroundColor[i],
-                  strokeStyle: dataset.borderColor[i],
-                  lineWidth: dataset.borderWidth,
-                  fontColor: '#e0e0e0',
-                  textColor: '#e0e0e0',
-                  hidden: false,
-                  index: i
-                }
-              })
-            }
-            return []
-          }
-        }
+        display: false // 右側の凡例を非表示
       },
       tooltip: {
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -150,7 +123,35 @@ function ShopTypeChart({ user }) {
             return `${label}: ${value}件 (${percentage}%)`
           }
         }
+      },
+      datalabels: {
+        display: function(context) {
+          // セグメントが小さすぎる場合は非表示
+          const dataset = context.dataset
+          const value = dataset.data[context.dataIndex]
+          const total = dataset.data.reduce((a, b) => a + b, 0)
+          const percentage = (value / total) * 100
+          return percentage >= 3 // 3%以上のセグメントのみ表示
+        },
+        color: '#ffffff',
+        font: {
+          weight: 'bold',
+          size: 13
+        },
+        formatter: function(value, context) {
+          const label = context.chart.data.labels[context.dataIndex]
+          const total = context.dataset.data.reduce((a, b) => a + b, 0)
+          const percentage = ((value / total) * 100).toFixed(1)
+          return `${label}\n${percentage}%`
+        },
+        textAlign: 'center',
+        textStrokeColor: 'rgba(0, 0, 0, 0.6)',
+        textStrokeWidth: 3,
+        padding: 4
       }
+    },
+    onHover: (event, activeElements) => {
+      event.native.target.style.cursor = activeElements.length > 0 ? 'pointer' : 'default'
     }
   }
 

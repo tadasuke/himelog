@@ -771,4 +771,57 @@ class RecordController extends Controller
             return $result;
         }
     }
+
+    /**
+     * ランキングを取得
+     */
+    public function getRanking(Request $request): JsonResponse
+    {
+        $this->logMethodStart(__FUNCTION__, ['request' => $request], __FILE__, __LINE__);
+        try {
+            // 認証されたユーザーIDを取得
+            $authenticatedUserId = $request->input('authenticated_user_id');
+            if (!$authenticatedUserId) {
+                return response()->json([
+                    'error' => 'Unauthorized',
+                    'message' => '認証が必要です'
+                ], 401);
+            }
+
+            $type = $request->query('type', 'overall_rating');
+            $limit = (int) $request->query('limit', 5);
+
+            if ($type === 'overall_rating') {
+                $records = $this->recordService->getOverallRatingRanking($authenticatedUserId, $limit);
+            } elseif ($type === 'face_rating') {
+                $records = $this->recordService->getFaceRatingRanking($authenticatedUserId, $limit);
+            } elseif ($type === 'style_rating') {
+                $records = $this->recordService->getStyleRatingRanking($authenticatedUserId, $limit);
+            } elseif ($type === 'service_rating') {
+                $records = $this->recordService->getServiceRatingRanking($authenticatedUserId, $limit);
+            } elseif ($type === 'visit_count') {
+                $records = $this->recordService->getVisitCountRanking($authenticatedUserId, $limit);
+            } else {
+                return response()->json([
+                    'error' => 'Invalid type',
+                    'message' => 'typeはoverall_rating、face_rating、style_rating、service_rating、visit_countのいずれかである必要があります'
+                ], 400);
+            }
+
+            $result = response()->json([
+                'success' => true,
+                'records' => $records
+            ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('Ranking fetch error: ' . $e->getMessage());
+            $result = response()->json([
+                'error' => 'Failed to fetch ranking',
+                'message' => $e->getMessage()
+            ], 500);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        }
+    }
 }

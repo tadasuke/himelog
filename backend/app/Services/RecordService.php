@@ -927,5 +927,297 @@ HTML;
 
         return $html;
     }
+
+    /**
+     * 総合評価ランキング（上位5件）を取得
+     * overall_ratingが高い順にソート
+     * 同じヒメのレビューが複数ある場合は、最も評価が高いものだけを表示
+     */
+    public function getOverallRatingRanking(string $userId, int $limit = 5)
+    {
+        $allRecords = Record::where('user_id', $userId)
+            ->whereNotNull('overall_rating')
+            ->where('overall_rating', '>', 0)
+            ->with('shopType')
+            ->orderBy('overall_rating', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // 同じヒメのレビューが複数ある場合、最も評価が高いものだけを残す
+        $uniqueRecords = [];
+        $girlNamesSeen = [];
+        foreach ($allRecords as $record) {
+            $girlName = $record->girl_name ?? '';
+            if (empty($girlName)) {
+                // ヒメ名がない場合はそのまま追加
+                $uniqueRecords[] = $record;
+            } else {
+                // ヒメ名がある場合、まだ見ていないヒメ名なら追加
+                if (!isset($girlNamesSeen[$girlName])) {
+                    $girlNamesSeen[$girlName] = true;
+                    $uniqueRecords[] = $record;
+                }
+            }
+        }
+
+        // 上位5件に制限
+        $records = collect($uniqueRecords)->take($limit);
+
+        // 各記録にヒメの画像URL（最初の1枚目）を追加
+        foreach ($records as $record) {
+            $girlImageUrl = null;
+            if ($record->girl_name) {
+                $girl = Girl::where('user_id', $userId)
+                    ->where('girl_name', $record->girl_name)
+                    ->with(['girlImageUrls' => function ($query) {
+                        $query->orderBy('display_order')->limit(1);
+                    }])
+                    ->first();
+                
+                if ($girl && $girl->girlImageUrls && $girl->girlImageUrls->count() > 0) {
+                    $girlImageUrl = $girl->girlImageUrls->first()->image_url;
+                }
+            }
+            $record->girl_image_url = $girlImageUrl;
+        }
+
+        return $records;
+    }
+
+    /**
+     * 顔の評価ランキング（上位5件）を取得
+     * face_ratingが高い順にソート
+     * 同じヒメのレビューが複数ある場合は、最も評価が高いものだけを表示
+     */
+    public function getFaceRatingRanking(string $userId, int $limit = 5)
+    {
+        $allRecords = Record::where('user_id', $userId)
+            ->whereNotNull('face_rating')
+            ->where('face_rating', '>', 0)
+            ->with('shopType')
+            ->orderBy('face_rating', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // 同じヒメのレビューが複数ある場合、最も評価が高いものだけを残す
+        $uniqueRecords = [];
+        $girlNamesSeen = [];
+        foreach ($allRecords as $record) {
+            $girlName = $record->girl_name ?? '';
+            if (empty($girlName)) {
+                // ヒメ名がない場合はそのまま追加
+                $uniqueRecords[] = $record;
+            } else {
+                // ヒメ名がある場合、まだ見ていないヒメ名なら追加
+                if (!isset($girlNamesSeen[$girlName])) {
+                    $girlNamesSeen[$girlName] = true;
+                    $uniqueRecords[] = $record;
+                }
+            }
+        }
+
+        // 上位5件に制限
+        $records = collect($uniqueRecords)->take($limit);
+
+        // 各記録にヒメの画像URL（最初の1枚目）を追加
+        foreach ($records as $record) {
+            $girlImageUrl = null;
+            if ($record->girl_name) {
+                $girl = Girl::where('user_id', $userId)
+                    ->where('girl_name', $record->girl_name)
+                    ->with(['girlImageUrls' => function ($query) {
+                        $query->orderBy('display_order')->limit(1);
+                    }])
+                    ->first();
+                
+                if ($girl && $girl->girlImageUrls && $girl->girlImageUrls->count() > 0) {
+                    $girlImageUrl = $girl->girlImageUrls->first()->image_url;
+                }
+            }
+            $record->girl_image_url = $girlImageUrl;
+        }
+
+        return $records;
+    }
+
+    /**
+     * スタイルの評価ランキング（上位5件）を取得
+     * style_ratingが高い順にソート
+     * 同じヒメのレビューが複数ある場合は、最も評価が高いものだけを表示
+     */
+    public function getStyleRatingRanking(string $userId, int $limit = 5)
+    {
+        $allRecords = Record::where('user_id', $userId)
+            ->whereNotNull('style_rating')
+            ->where('style_rating', '>', 0)
+            ->with('shopType')
+            ->orderBy('style_rating', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // 同じヒメのレビューが複数ある場合、最も評価が高いものだけを残す
+        $uniqueRecords = [];
+        $girlNamesSeen = [];
+        foreach ($allRecords as $record) {
+            $girlName = $record->girl_name ?? '';
+            if (empty($girlName)) {
+                // ヒメ名がない場合はそのまま追加
+                $uniqueRecords[] = $record;
+            } else {
+                // ヒメ名がある場合、まだ見ていないヒメ名なら追加
+                if (!isset($girlNamesSeen[$girlName])) {
+                    $girlNamesSeen[$girlName] = true;
+                    $uniqueRecords[] = $record;
+                }
+            }
+        }
+
+        // 上位5件に制限
+        $records = collect($uniqueRecords)->take($limit);
+
+        // 各記録にヒメの画像URL（最初の1枚目）を追加
+        foreach ($records as $record) {
+            $girlImageUrl = null;
+            if ($record->girl_name) {
+                $girl = Girl::where('user_id', $userId)
+                    ->where('girl_name', $record->girl_name)
+                    ->with(['girlImageUrls' => function ($query) {
+                        $query->orderBy('display_order')->limit(1);
+                    }])
+                    ->first();
+                
+                if ($girl && $girl->girlImageUrls && $girl->girlImageUrls->count() > 0) {
+                    $girlImageUrl = $girl->girlImageUrls->first()->image_url;
+                }
+            }
+            $record->girl_image_url = $girlImageUrl;
+        }
+
+        return $records;
+    }
+
+    /**
+     * 接客の評価ランキング（上位5件）を取得
+     * service_ratingが高い順にソート
+     * 同じヒメのレビューが複数ある場合は、最も評価が高いものだけを表示
+     */
+    public function getServiceRatingRanking(string $userId, int $limit = 5)
+    {
+        $allRecords = Record::where('user_id', $userId)
+            ->whereNotNull('service_rating')
+            ->where('service_rating', '>', 0)
+            ->with('shopType')
+            ->orderBy('service_rating', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // 同じヒメのレビューが複数ある場合、最も評価が高いものだけを残す
+        $uniqueRecords = [];
+        $girlNamesSeen = [];
+        foreach ($allRecords as $record) {
+            $girlName = $record->girl_name ?? '';
+            if (empty($girlName)) {
+                // ヒメ名がない場合はそのまま追加
+                $uniqueRecords[] = $record;
+            } else {
+                // ヒメ名がある場合、まだ見ていないヒメ名なら追加
+                if (!isset($girlNamesSeen[$girlName])) {
+                    $girlNamesSeen[$girlName] = true;
+                    $uniqueRecords[] = $record;
+                }
+            }
+        }
+
+        // 上位5件に制限
+        $records = collect($uniqueRecords)->take($limit);
+
+        // 各記録にヒメの画像URL（最初の1枚目）を追加
+        foreach ($records as $record) {
+            $girlImageUrl = null;
+            if ($record->girl_name) {
+                $girl = Girl::where('user_id', $userId)
+                    ->where('girl_name', $record->girl_name)
+                    ->with(['girlImageUrls' => function ($query) {
+                        $query->orderBy('display_order')->limit(1);
+                    }])
+                    ->first();
+                
+                if ($girl && $girl->girlImageUrls && $girl->girlImageUrls->count() > 0) {
+                    $girlImageUrl = $girl->girlImageUrls->first()->image_url;
+                }
+            }
+            $record->girl_image_url = $girlImageUrl;
+        }
+
+        return $records;
+    }
+
+    /**
+     * 利用回数ランキング（上位5件）を取得
+     * 同じshop_nameまたはgirl_nameの出現回数が多い順にソート
+     */
+    public function getVisitCountRanking(string $userId, int $limit = 5)
+    {
+        $records = Record::where('user_id', $userId)
+            ->with('shopType')
+            ->get();
+
+        // お店名とヒメ名の組み合わせごとに集計
+        $visitCounts = [];
+        foreach ($records as $record) {
+            $key = ($record->shop_name ?? '') . '_' . ($record->girl_name ?? '');
+            if (!isset($visitCounts[$key])) {
+                $visitCounts[$key] = [
+                    'count' => 0,
+                    'records' => []
+                ];
+            }
+            $visitCounts[$key]['count']++;
+            $visitCounts[$key]['records'][] = $record;
+        }
+
+        // 訪問回数の降順でソート
+        uasort($visitCounts, function ($a, $b) {
+            return $b['count'] <=> $a['count'];
+        });
+
+        // 上位5件の最初の記録を取得
+        $topRecords = [];
+        $count = 0;
+        foreach ($visitCounts as $visitData) {
+            if ($count >= $limit) {
+                break;
+            }
+            // 各グループから最新の記録を取得
+            $latestRecord = collect($visitData['records'])->sortByDesc(function ($record) {
+                return $record->visit_date ? $record->visit_date->timestamp : $record->created_at->timestamp;
+            })->first();
+            
+            // 訪問回数を記録に追加
+            $latestRecord->visit_count = $visitData['count'];
+            $topRecords[] = $latestRecord;
+            $count++;
+        }
+
+        // 各記録にヒメの画像URL（最初の1枚目）を追加
+        foreach ($topRecords as $record) {
+            $girlImageUrl = null;
+            if ($record->girl_name) {
+                $girl = Girl::where('user_id', $userId)
+                    ->where('girl_name', $record->girl_name)
+                    ->with(['girlImageUrls' => function ($query) {
+                        $query->orderBy('display_order')->limit(1);
+                    }])
+                    ->first();
+                
+                if ($girl && $girl->girlImageUrls && $girl->girlImageUrls->count() > 0) {
+                    $girlImageUrl = $girl->girlImageUrls->first()->image_url;
+                }
+            }
+            $record->girl_image_url = $girlImageUrl;
+        }
+
+        return collect($topRecords);
+    }
 }
 

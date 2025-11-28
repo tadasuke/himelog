@@ -4,7 +4,7 @@ import Home from './components/Home'
 import MyPage from './components/MyPage'
 import ReviewSearch from './components/ReviewSearch'
 import ShopDetail from './components/ShopDetail'
-import GirlList from './components/GirlList'
+import RecordRanking from './components/RecordRanking'
 import GirlDetail from './components/GirlDetail'
 import BottomNavigation from './components/BottomNavigation'
 import { getApiUrl, removeAuthToken, getAuthToken, setRefreshToken, setTokenExpiry, removeRefreshToken, removeTokenExpiry } from './utils/api'
@@ -550,8 +550,8 @@ function App() {
             <MyPage user={user} onLogout={handleLogout} />
           ) : currentPage === 'discover' ? (
             <ReviewSearch user={user} onShopClick={handleShopClick} onGirlClick={handleGirlClick} />
-          ) : currentPage === 'girls' ? (
-            <GirlList user={user} onShopClick={handleShopClick} onGirlClick={handleGirlClick} />
+          ) : currentPage === 'records' ? (
+            <RecordRanking user={user} onShopClick={handleShopClick} onGirlClick={handleGirlClick} />
           ) : (
             <Home 
               user={user} 

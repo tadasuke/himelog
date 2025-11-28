@@ -45,6 +45,7 @@ Route::middleware([\App\Http\Middleware\AuthenticateUser::class])->group(functio
     Route::post('/records/{id}/publish', [RecordController::class, 'publish']);
     Route::delete('/records/{id}/publish', [RecordController::class, 'unpublish']);
     Route::get('/records/{id}/public-url', [RecordController::class, 'getPublicUrl']);
+    Route::get('/records/ranking', [RecordController::class, 'getRanking']);
     Route::get('/shops', [\App\Http\Controllers\ShopController::class, 'getShop']);
     Route::post('/shops', [\App\Http\Controllers\ShopController::class, 'createOrUpdateShop']);
     Route::get('/girls', [\App\Http\Controllers\GirlController::class, 'getGirl']);
