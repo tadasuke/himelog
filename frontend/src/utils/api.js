@@ -15,7 +15,20 @@ export const getApiBaseUrl = () => {
     hostname,
     isLocalhost,
     VITE_API_BASE_URL: envApiBaseUrl,
+    VITE_API_BASE_URL_type: typeof envApiBaseUrl,
+    VITE_API_BASE_URL_length: envApiBaseUrl?.length,
+    VITE_API_BASE_URL_stringified: JSON.stringify(envApiBaseUrl),
   })
+  
+  // 重複を検出
+  if (envApiBaseUrl && typeof envApiBaseUrl === 'string') {
+    const domainPattern = /([a-zA-Z0-9.-]+\.(?:net|com|jp|org))/g
+    const matches = envApiBaseUrl.match(domainPattern)
+    if (matches && matches.length > 1) {
+      console.error('⚠️ 重複したドメインが検出されました:', matches)
+      console.error('⚠️ 元の値:', envApiBaseUrl)
+    }
+  }
   
   // ローカル環境の場合
   if (isLocalhost) {
@@ -65,7 +78,33 @@ export const getApiUrl = (path) => {
   const baseUrl = getApiBaseUrl()
   // pathが既にスラッシュで始まっていることを確認
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
-  return `${baseUrl}${normalizedPath}`
+  const finalUrl = `${baseUrl}${normalizedPath}`
+  
+  // デバッグ情報を出力
+  console.log('getApiUrl debug:', {
+    path,
+    baseUrl,
+    normalizedPath,
+    finalUrl,
+    baseUrl_length: baseUrl?.length,
+    finalUrl_length: finalUrl?.length,
+  })
+  
+  // 重複を検出
+  if (finalUrl && typeof finalUrl === 'string') {
+    const domainPattern = /([a-zA-Z0-9.-]+\.(?:net|com|jp|org))/g
+    const matches = finalUrl.match(domainPattern)
+    if (matches && matches.length > 1) {
+      const uniqueDomains = [...new Set(matches)]
+      if (matches.length !== uniqueDomains.length) {
+        console.error('⚠️ 重複したドメインが検出されました:', matches)
+        console.error('⚠️ 最終URL:', finalUrl)
+        console.error('⚠️ ユニークなドメイン:', uniqueDomains)
+      }
+    }
+  }
+  
+  return finalUrl
 }
 
 /**
