@@ -1,9 +1,73 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import { writeFileSync, readFileSync } from 'fs'
+import { resolve, dirname } from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(({ mode }) => {
+  // 環境変数を読み込む
+  const env = loadEnv(mode, process.cwd(), '')
+  
+  // ビルド時にconfig.jsを生成
+  const generateConfigJs = () => {
+    const apiBaseUrl = env.VITE_API_BASE_URL || ''
+    const googleClientId = env.VITE_GOOGLE_CLIENT_ID || ''
+    const xClientId = env.VITE_X_CLIENT_ID || ''
+    const reactAppUrl = env.VITE_REACT_APP_URL || '/'
+    
+    const configContent = `// このファイルは自動生成されます。手動で編集しないでください。
+// 環境変数から生成: ${mode}
+
+// APIベースURL
+window.API_BASE_URL = ${JSON.stringify(apiBaseUrl)};
+
+// Google Client ID
+window.GOOGLE_CLIENT_ID = ${JSON.stringify(googleClientId)};
+
+// X Client ID  
+window.X_CLIENT_ID = ${JSON.stringify(xClientId)};
+
+// ReactアプリのURL（認証成功後のリダイレクト先）
+window.REACT_APP_URL = ${JSON.stringify(reactAppUrl)};
+`
+    
+    const configPath = resolve(__dirname, 'public/login/config.js')
+    writeFileSync(configPath, configContent, 'utf-8')
+    console.log('Generated config.js with environment variables')
+  }
+  
+  return {
+    plugins: [
+      react(),
+      {
+        name: 'generate-config-js',
+        buildStart() {
+          generateConfigJs()
+        },
+        configureServer(server) {
+          // 開発サーバー起動時にも生成
+          generateConfigJs()
+          
+          // /login/config.jsを静的ファイルとして配信するミドルウェア
+          server.middlewares.use('/login/config.js', (req, res, next) => {
+            try {
+              const configPath = resolve(__dirname, 'public/login/config.js')
+              const configContent = readFileSync(configPath, 'utf-8')
+              res.setHeader('Content-Type', 'application/javascript')
+              res.end(configContent)
+            } catch (error) {
+              console.error('Error serving config.js:', error)
+              res.statusCode = 404
+              res.end('Not Found')
+            }
+          })
+        }
+      }
+    ],
   server: {
     proxy: {
       '/api': {
@@ -38,4 +102,5 @@ export default defineConfig({
     strictPort: false,
     open: false,
   },
+  }
 })

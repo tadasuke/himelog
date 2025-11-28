@@ -64,23 +64,21 @@
         <div class="error" id="error-message" style="display: none;"></div>
     </div>
 
+    <script src="/login/config.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script>
         // 設定の取得
         function getConfig() {
-            let apiBaseUrl = '';
-            const hostname = window.location.hostname;
-            const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+            // window.API_BASE_URLは必ず設定されている
+            const apiBaseUrl = window.API_BASE_URL;
             
-            if (isLocalhost) {
-                apiBaseUrl = 'http://localhost:8000';
-            } else {
-                apiBaseUrl = window.location.origin.replace(/^https?:\/\/(app\.)?/, (match, app) => {
-                    if (app) {
-                        return window.location.protocol + '//' + window.location.hostname.replace('app.', '');
-                    }
-                    return window.location.origin;
-                });
+            // デバッグ: window.API_BASE_URLの値をログ出力
+            console.log('getConfig - window.API_BASE_URL:', apiBaseUrl);
+            console.log('getConfig - window.API_BASE_URL type:', typeof apiBaseUrl);
+            console.log('getConfig - window.API_BASE_URL length:', apiBaseUrl?.length);
+            
+            if (!apiBaseUrl) {
+                console.error('⚠️ window.API_BASE_URL is not set!');
             }
             
             // ReactアプリのURLを取得（同じドメインなので相対パスを使用）
