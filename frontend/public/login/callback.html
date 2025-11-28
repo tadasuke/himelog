@@ -72,12 +72,16 @@
             const hostname = window.location.hostname;
             const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
             
-            if (isLocalhost) {
+            // window.API_BASE_URLが設定されている場合はそれを使用（最優先）
+            if (window.API_BASE_URL) {
+                apiBaseUrl = window.API_BASE_URL;
+            } else if (isLocalhost) {
                 apiBaseUrl = 'http://localhost:8000';
             } else {
+                // フォールバック: app.hime-log.jp → api.hime-log.jp に変換
                 apiBaseUrl = window.location.origin.replace(/^https?:\/\/(app\.)?/, (match, app) => {
                     if (app) {
-                        return window.location.protocol + '//' + window.location.hostname.replace('app.', '');
+                        return window.location.protocol + '//' + window.location.hostname.replace('app.', 'api.');
                     }
                     return window.location.origin;
                 });
