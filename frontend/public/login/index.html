@@ -556,6 +556,18 @@
 
         // ページロード時の初期化
         document.addEventListener('DOMContentLoaded', () => {
+            // 既にログイン済みの場合はReactアプリにリダイレクト
+            const sessionAuthToken = sessionStorage.getItem('authToken');
+            const localStorageAuthToken = localStorage.getItem('authToken');
+            const sessionUser = sessionStorage.getItem('user') || localStorage.getItem('user');
+            const sessionIsLoggedIn = sessionStorage.getItem('isLoggedIn') || localStorage.getItem('isLoggedIn');
+            
+            if ((sessionAuthToken || localStorageAuthToken) && sessionUser && sessionIsLoggedIn === 'true') {
+                console.log('Already logged in, redirecting to app');
+                window.location.href = '/';
+                return;
+            }
+            
             console.log('DOMContentLoaded - Initializing auth');
             console.log('window.GOOGLE_CLIENT_ID:', window.GOOGLE_CLIENT_ID ? 'set' : 'not set');
             console.log('window.X_CLIENT_ID:', window.X_CLIENT_ID ? 'set' : 'not set');
@@ -566,6 +578,18 @@
         
         // 念のため、window.onloadでも初期化（config.jsが遅延読み込みされる場合に備える）
         window.addEventListener('load', () => {
+            // 既にログイン済みの場合はReactアプリにリダイレクト
+            const sessionAuthToken = sessionStorage.getItem('authToken');
+            const localStorageAuthToken = localStorage.getItem('authToken');
+            const sessionUser = sessionStorage.getItem('user') || localStorage.getItem('user');
+            const sessionIsLoggedIn = sessionStorage.getItem('isLoggedIn') || localStorage.getItem('isLoggedIn');
+            
+            if ((sessionAuthToken || localStorageAuthToken) && sessionUser && sessionIsLoggedIn === 'true') {
+                console.log('Already logged in (onload), redirecting to app');
+                window.location.href = '/';
+                return;
+            }
+            
             console.log('window.load - Re-checking config');
             // 既に設定されている場合は何もしない
             const config = getConfig();

@@ -65,7 +65,13 @@ const sanitizeErrorMessage = (errorMessage) => {
 }
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  // 初期値: セッションストレージに認証情報がある場合は一時的にtrueに設定（移行処理が完了するまで）
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    const sessionAuthToken = sessionStorage.getItem('authToken')
+    const sessionUser = sessionStorage.getItem('user')
+    const sessionIsLoggedIn = sessionStorage.getItem('isLoggedIn')
+    return !!(sessionAuthToken && sessionUser && sessionIsLoggedIn === 'true')
+  })
   const [user, setUser] = useState(null)
   const [currentPage, setCurrentPage] = useState('home')
   const [selectedShop, setSelectedShop] = useState(null)
@@ -112,6 +118,7 @@ function App() {
         setIsLoggedIn(true)
         setCurrentPage('home')
         console.log('Login state restored from sessionStorage:', user)
+        // 認証情報を復元したので、ログインページにリダイレクトしないようにreturn
         return
       } catch (error) {
         console.error('Failed to restore from sessionStorage:', error)
@@ -460,18 +467,21 @@ function App() {
       removeRefreshToken()
       removeTokenExpiry()
       
+      // セッションストレージもクリア
+      sessionStorage.removeItem('authToken')
+      sessionStorage.removeItem('user')
+      sessionStorage.removeItem('isLoggedIn')
+      sessionStorage.removeItem('refreshToken')
+      sessionStorage.removeItem('tokenExpiry')
+      sessionStorage.removeItem('authMethod')
+      
       // フロントエンドの状態をリセット
       setUser(null)
       setIsLoggedIn(false)
-      setCurrentPage('home') // ログアウト時もホームにリセット
-      // ページ遷移時にトップにスクロール（useEffectで処理されるため、ここでは不要だが念のため）
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          window.scrollTo({ top: 0, behavior: 'auto' })
-          document.documentElement.scrollTop = 0
-          document.body.scrollTop = 0
-        })
-      })
+      
+      // ログインページにリダイレクト
+      window.location.href = '/login/index.html'
+      
       console.log('Logout successful')
     } catch (error) {
       console.error('Logout error:', error)
@@ -481,17 +491,19 @@ function App() {
       removeAuthToken()
       removeRefreshToken()
       removeTokenExpiry()
+      // セッションストレージもクリア
+      sessionStorage.removeItem('authToken')
+      sessionStorage.removeItem('user')
+      sessionStorage.removeItem('isLoggedIn')
+      sessionStorage.removeItem('refreshToken')
+      sessionStorage.removeItem('tokenExpiry')
+      sessionStorage.removeItem('authMethod')
+      
       setUser(null)
       setIsLoggedIn(false)
-      setCurrentPage('home') // ログアウト時もホームにリセット
-      // ページ遷移時にトップにスクロール（useEffectで処理されるため、ここでは不要だが念のため）
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          window.scrollTo({ top: 0, behavior: 'auto' })
-          document.documentElement.scrollTop = 0
-          document.body.scrollTop = 0
-        })
-      })
+      
+      // ログインページにリダイレクト
+      window.location.href = '/login/index.html'
     }
   }
 
@@ -575,10 +587,47 @@ function App() {
     })
   }
 
+
+  // ログインしていない状態で、ログインページ以外にアクセスしている場合は、ログインページにリダイレクト
+  useEffect(() => {
+    // セッションストレージに認証情報がある場合は、移行処理が完了するまで待つ
+    const sessionAuthToken = sessionStorage.getItem('authToken')
+    const sessionUser = sessionStorage.getItem('user')
+    const sessionIsLoggedIn = sessionStorage.getItem('isLoggedIn')
+    
+    if (sessionAuthToken && sessionUser && sessionIsLoggedIn === 'true') {
+      // 認証情報がセッションストレージにある場合は、移行処理が完了するまで待つ
+      // （最初のuseEffectで処理される）
+      return
+    }
+    
+    if (!isLoggedIn) {
+      const currentPath = window.location.pathname
+      // ログインページ以外の場合のみリダイレクト
+      if (currentPath !== '/login/index.html' && !currentPath.startsWith('/login/')) {
+        window.location.href = '/login/index.html'
+      }
+    }
+  }, [isLoggedIn])
+
+  // ログインしていない場合は、ログインページにリダイレクトするため、何も表示しない
+  const sessionAuthToken = sessionStorage.getItem('authToken')
+  const sessionUser = sessionStorage.getItem('user')
+  const sessionIsLoggedIn = sessionStorage.getItem('isLoggedIn')
+  const hasPendingAuth = sessionAuthToken && sessionUser && sessionIsLoggedIn === 'true'
+  
+  if (!isLoggedIn && !hasPendingAuth) {
+    const currentPath = window.location.pathname
+    // ログインページ以外の場合のみ何も表示しない（リダイレクトが実行される）
+    if (currentPath !== '/login/index.html' && !currentPath.startsWith('/login/')) {
+      return null
+    }
+  }
+
   return (
     <div className="app">
       {!isLoggedIn ? (
-        <Login onGoogleLogin={handleGoogleLogin} onXLogin={handleXLogin} />
+        null // ログインページにリダイレクトされるため、何も表示しない
       ) : (
         <>
           {selectedShop ? (
