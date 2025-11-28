@@ -73,6 +73,22 @@ class DatabaseConnectionServiceProvider extends ServiceProvider
             return;
         }
 
+        // データベース接続が必要なコマンドの場合は、config.phpの存在をチェック
+        $dbRequiredCommands = [
+            'migrate',
+            'migrate:fresh',
+            'migrate:refresh',
+            'migrate:reset',
+            'migrate:rollback',
+            'migrate:status',
+            'db:seed',
+            'db:wipe',
+        ];
+        
+        if ($command !== null && in_array($command, $dbRequiredCommands)) {
+            $this->ensureConfigCacheExists();
+        }
+
         // 設定でSQLiteが指定されていないことを確認
         $defaultConnection = config('database.default', env('DB_CONNECTION', 'mysql'));
         
@@ -103,6 +119,32 @@ class DatabaseConnectionServiceProvider extends ServiceProvider
             }
         } catch (\Exception $e) {
             // 接続エラーの場合は既にSQLiteファイルの存在チェックは完了している
+        }
+    }
+
+    /**
+     * config.phpの存在を確認し、存在しない場合はエラーをスロー
+     */
+    private function ensureConfigCacheExists(): void
+    {
+        // ローカル環境の場合はスキップ（.envファイルから読み込む）
+        if (app()->environment('local')) {
+            return;
+        }
+
+        $configCachePath = base_path('bootstrap/cache/config.php');
+        
+        if (!file_exists($configCachePath)) {
+            $message = "Config cache file not found at: {$configCachePath}. " .
+                       "Please run 'php artisan config:cache' before executing database commands. " .
+                       "This is required to load database credentials from AWS Secrets Manager.";
+            
+            Log::error('Config cache file not found', [
+                'path' => $configCachePath,
+                'message' => $message,
+            ]);
+            
+            throw new \RuntimeException($message);
         }
     }
 
