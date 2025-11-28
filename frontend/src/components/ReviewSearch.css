@@ -237,6 +237,7 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  flex-direction: row;
 }
 
 .log-card-shop-type {
@@ -261,7 +262,7 @@
 }
 
 .log-card-date {
-  font-size: 12px;
+  font-size: 14px;
   color: #a0a0a0;
 }
 

@@ -271,7 +271,7 @@
 }
 
 .log-card-date {
-  font-size: 11px;
+  font-size: 14px;
   color: #6f8cff;
   white-space: nowrap;
   font-weight: 400;
@@ -286,8 +286,10 @@
 
 .log-card-shop {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .log-card-shop-type {
@@ -585,7 +587,7 @@
   }
 
   .log-card-date {
-    font-size: 12px;
+    font-size: 14px;
   }
 
   .log-card-info {
