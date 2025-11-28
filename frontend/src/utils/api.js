@@ -151,6 +151,127 @@ export const isTokenValid = () => {
 }
 
 /**
+ * Google IDトークン（JWT）の有効期限を取得
+ * @returns {number|null} 有効期限（Unixタイムスタンプ、ミリ秒） または null
+ */
+export const getGoogleTokenExpiry = () => {
+  const token = getAuthToken()
+  if (!token) return null
+  
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+    
+    // base64urlデコード
+    const payloadBase64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const padding = (4 - (payloadBase64.length % 4)) % 4
+    const payloadJson = atob(payloadBase64 + '='.repeat(padding))
+    const payload = JSON.parse(payloadJson)
+    
+    // expは秒単位なのでミリ秒に変換
+    return payload.exp ? payload.exp * 1000 : null
+  } catch (error) {
+    console.error('Failed to parse Google token:', error)
+    return null
+  }
+}
+
+/**
+ * Google IDトークンが有効期限内かどうかを確認
+ * @returns {boolean} トークンが有効期限内の場合 true
+ */
+export const isGoogleTokenValid = () => {
+  const expiry = getGoogleTokenExpiry()
+  if (!expiry) return false
+  // 5分のマージンを設ける（期限切れの5分前でも無効とみなす）
+  return Date.now() < (expiry - 5 * 60 * 1000)
+}
+
+/**
+ * Google Identity Servicesから新しいIDトークンを取得
+ * @returns {Promise<string|null>} 新しいIDトークン または null
+ */
+export const refreshGoogleToken = async () => {
+  return new Promise((resolve) => {
+    if (typeof window.google === 'undefined' || !window.google.accounts) {
+      console.warn('Google Identity Services not loaded')
+      resolve(null)
+      return
+    }
+    
+    // Google Identity Servicesが初期化されているか確認
+    if (!window.google.accounts.id) {
+      console.warn('Google Identity Services ID not initialized')
+      resolve(null)
+      return
+    }
+    
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+    if (!clientId) {
+      console.warn('VITE_GOOGLE_CLIENT_ID is not set')
+      resolve(null)
+      return
+    }
+    
+    let resolved = false
+    
+    // コールバック関数を定義
+    const callback = (response) => {
+      if (resolved) return
+      resolved = true
+      
+      if (response.credential) {
+        console.log('New Google token obtained')
+        setAuthToken(response.credential)
+        resolve(response.credential)
+      } else {
+        console.warn('Failed to obtain new Google token')
+        resolve(null)
+      }
+    }
+    
+    // Google Identity Servicesを初期化
+    try {
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: callback,
+        ux_mode: 'popup',
+      })
+      
+      // プロンプトを表示せずにトークンを取得を試みる
+      window.google.accounts.id.prompt((notification) => {
+        if (resolved) return
+        
+        // プロンプトが表示されなかった場合（ユーザーが既にログインしている場合）
+        // またはスキップされた場合、手動でトークンを取得する必要がある
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          console.warn('Google prompt not displayed, user may need to re-authenticate')
+          if (!resolved) {
+            resolved = true
+            resolve(null)
+          }
+        }
+      })
+      
+      // タイムアウトを設定（3秒）
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true
+          console.warn('Google token refresh timeout')
+          resolve(null)
+        }
+      }, 3000)
+    } catch (error) {
+      console.error('Error refreshing Google token:', error)
+      if (!resolved) {
+        resolved = true
+        resolve(null)
+      }
+    }
+  })
+}
+
+/**
  * リフレッシュトークンを使用してアクセストークンを更新
  * @returns {Promise<{access_token: string, refresh_token: string, expires_in: number}|null>} 更新されたトークン情報 または null
  */
@@ -248,22 +369,37 @@ export const getAuthHeaders = (options = {}) => {
  * @returns {Promise<Response>} fetchレスポンス
  */
 export const fetchWithAuth = async (url, options = {}) => {
-  // トークンが期限切れの場合は事前に更新を試みる
-  if (!isTokenValid()) {
-    const refreshed = await refreshAccessToken()
-    // リフレッシュトークンがない場合でも、アクセストークンが存在する場合は続行
-    // refreshAccessToken内でログアウト処理が実行された場合は、ページがリロードされるためここには到達しない
-    if (!refreshed) {
-      // リフレッシュトークンがない場合、アクセストークンが有効かどうか確認
-      const authToken = getAuthToken()
-      if (!authToken) {
-        // アクセストークンもない場合は、既にログアウト処理が実行されているはず
-        return new Response(JSON.stringify({ error: 'Unauthorized', message: '認証が必要です' }), {
-          status: 401,
-          headers: { 'Content-Type': 'application/json' }
-        })
+  const refreshToken = getRefreshToken()
+  
+  // リフレッシュトークンがない場合（Google認証）、Google IDトークンの有効期限をチェック
+  if (!refreshToken) {
+    if (!isGoogleTokenValid()) {
+      console.log('Google token expired or expiring soon, attempting to refresh...')
+      const newToken = await refreshGoogleToken()
+      if (!newToken) {
+        // 新しいトークンを取得できなかった場合
+        console.warn('Failed to refresh Google token, proceeding with current token')
+        // ここではログアウトせず、APIリクエストを試みる（バックエンドで401が返される可能性がある）
       }
-      // アクセストークンがある場合は、そのまま使用（Google認証など）
+    }
+  } else {
+    // リフレッシュトークンがある場合（X認証など）、既存のロジックを使用
+    if (!isTokenValid()) {
+      const refreshed = await refreshAccessToken()
+      // リフレッシュトークンがない場合でも、アクセストークンが存在する場合は続行
+      // refreshAccessToken内でログアウト処理が実行された場合は、ページがリロードされるためここには到達しない
+      if (!refreshed) {
+        // リフレッシュトークンがない場合、アクセストークンが有効かどうか確認
+        const authToken = getAuthToken()
+        if (!authToken) {
+          // アクセストークンもない場合は、既にログアウト処理が実行されているはず
+          return new Response(JSON.stringify({ error: 'Unauthorized', message: '認証が必要です' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+        // アクセストークンがある場合は、そのまま使用
+      }
     }
   }
 
@@ -271,14 +407,31 @@ export const fetchWithAuth = async (url, options = {}) => {
 
   // 401エラーの場合、トークンを更新して再試行
   if (response.status === 401) {
-    const refreshed = await refreshAccessToken()
-    if (refreshed) {
-      // トークンを更新したので、再度リクエストを送信
-      return fetch(url, getAuthHeaders(options))
+    const refreshToken = getRefreshToken()
+    
+    if (!refreshToken) {
+      // Google認証の場合、新しいトークンを取得
+      console.log('401 error with Google auth, attempting to refresh token...')
+      const newToken = await refreshGoogleToken()
+      if (newToken) {
+        // トークンを更新したので、再度リクエストを送信
+        return fetch(url, getAuthHeaders(options))
+      } else {
+        // 新しいトークンを取得できなかった場合、認証エラー処理を実行
+        handleAuthError(response)
+        return response
+      }
     } else {
-      // トークンの更新に失敗した場合は、認証エラー処理を実行
-      handleAuthError(response)
-      return response
+      // X認証の場合、既存のリフレッシュロジックを使用
+      const refreshed = await refreshAccessToken()
+      if (refreshed) {
+        // トークンを更新したので、再度リクエストを送信
+        return fetch(url, getAuthHeaders(options))
+      } else {
+        // トークンの更新に失敗した場合は、認証エラー処理を実行
+        handleAuthError(response)
+        return response
+      }
     }
   }
 

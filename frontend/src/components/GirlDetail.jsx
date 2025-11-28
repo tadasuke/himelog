@@ -977,19 +977,24 @@ function GirlDetail({ user, girlName, onShopClick }) {
                 
                 {girl?.girl_urls && girl.girl_urls.length > 0 && (
                   <div className="girl-detail-urls-display">
+                    <h4 className="girl-detail-urls-label">登録したURL</h4>
                     <ul className="girl-detail-urls-list">
-                      {girl.girl_urls.map((girlUrl, index) => (
-                        <li key={girlUrl.id || index} className="girl-detail-url-item">
-                          <a 
-                            href={girlUrl.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="girl-detail-url-link"
-                          >
-                            {urlTitles[girlUrl.url] || girlUrl.url}
-                          </a>
-                        </li>
-                      ))}
+                      {girl.girl_urls.map((girlUrl, index) => {
+                        const title = urlTitles[girlUrl.url] || girlUrl.url
+                        const truncatedTitle = title.length > 20 ? title.substring(0, 20) + '...' : title
+                        return (
+                          <li key={girlUrl.id || index} className="girl-detail-url-item">
+                            <a 
+                              href={girlUrl.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="girl-detail-url-link"
+                            >
+                              {truncatedTitle}
+                            </a>
+                          </li>
+                        )
+                      })}
                     </ul>
                   </div>
                 )}
