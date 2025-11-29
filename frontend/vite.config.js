@@ -1,6 +1,6 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
-import { writeFileSync, readFileSync } from 'fs'
+import { writeFileSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
 
@@ -48,23 +48,9 @@ window.REACT_APP_URL = ${JSON.stringify(reactAppUrl)};
         buildStart() {
           generateConfigJs()
         },
-        configureServer(server) {
+        configureServer() {
           // 開発サーバー起動時にも生成
           generateConfigJs()
-          
-          // /login/config.jsを静的ファイルとして配信するミドルウェア
-          server.middlewares.use('/login/config.js', (req, res, next) => {
-            try {
-              const configPath = resolve(__dirname, 'public/login/config.js')
-              const configContent = readFileSync(configPath, 'utf-8')
-              res.setHeader('Content-Type', 'application/javascript')
-              res.end(configContent)
-            } catch (error) {
-              console.error('Error serving config.js:', error)
-              res.statusCode = 404
-              res.end('Not Found')
-            }
-          })
         }
       }
     ],
