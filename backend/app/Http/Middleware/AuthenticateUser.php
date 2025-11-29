@@ -62,7 +62,7 @@ class AuthenticateUser
             ], 401);
         }
 
-        // 認証されたユーザー情報をリクエストに設定
+        // 認証されたユーザー情報をリクエストに設定（users.id を使用）
         $request->merge(['authenticated_user_id' => $user['user_id']]);
         $request->setUserResolver(function () use ($user) {
             return (object) $user;

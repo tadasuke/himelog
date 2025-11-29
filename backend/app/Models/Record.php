@@ -18,6 +18,7 @@ class Record extends Model
         'id',
         'public_token',
         'user_id',
+        'internal_user_id',
         'shop_type_id',
         'shop_name',
         'girl_name',

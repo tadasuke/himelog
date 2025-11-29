@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\User;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -57,20 +58,54 @@ class GoogleAuthService implements AuthServiceInterface
                 return null;
             }
 
-            // ユーザー情報を取得
-            $userId = $payload['sub'] ?? null;
+            // ユーザー情報を取得（provider_user_id は Google の sub）
+            $providerUserId = $payload['sub'] ?? null;
             $userEmail = $payload['email'] ?? null;
             $userName = $payload['name'] ?? null;
 
-            if (!$userId) {
+            if (!$providerUserId) {
                 Log::warning('Google auth: User ID not found', ['payload_keys' => array_keys($payload)]);
                 return null;
             }
 
+            // users テーブルにユーザ情報を保存または更新
+            try {
+                $dbUser = User::updateOrCreate(
+                    [
+                        'provider' => 'google',
+                        'provider_user_id' => $providerUserId,
+                    ],
+                    [
+                        'name' => $userName,
+                        'email' => $userEmail,
+                        'username' => null,
+                        'avatar' => null,
+                        'last_verified_at' => now(),
+                        'last_login_at' => now(),
+                        'status' => 'active',
+                    ]
+                );
+
+                Log::info('Google auth: User data saved to users table', [
+                    'provider_user_id' => $providerUserId,
+                    'users_table_id' => $dbUser->id,
+                ]);
+            } catch (\Exception $e) {
+                // DB保存に失敗しても認証処理自体は続行
+                Log::warning('Google auth: Failed to save user data to users table', [
+                    'provider_user_id' => $providerUserId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
             return [
-                'user_id' => $userId,
+                // アプリ全体での識別は内部UUID（users.id）を使用
+                'user_id' => $dbUser->id,
+                'provider_user_id' => $providerUserId,
                 'email' => $userEmail,
                 'name' => $userName,
+                'username' => null,
+                'avatar' => null,
             ];
         } catch (\Exception $e) {
             Log::error('Google auth error: ' . $e->getMessage());

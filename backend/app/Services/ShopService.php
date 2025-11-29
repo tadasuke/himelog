@@ -40,7 +40,7 @@ class ShopService
     {
         $shopTypeId = $this->convertShopTypeToId($shopType);
         
-        return Shop::where('user_id', $userId)
+        return Shop::where('internal_user_id', $userId)
             ->where('shop_type_id', $shopTypeId)
             ->where('shop_name', $shopName)
             ->with(['shopType', 'shopUrls'])
@@ -59,11 +59,13 @@ class ShopService
             // お店を取得または作成
             $shop = Shop::firstOrCreate(
                 [
-                    'user_id' => $userId,
+                    'internal_user_id' => $userId,
                     'shop_type_id' => $shopTypeId,
                     'shop_name' => $shopName,
                 ],
                 [
+                    // 既存スキーマ互換性のため、user_id にも同じ値を保存（NOT NULL制約対応）
+                    'user_id' => $userId,
                     'memo' => $memo,
                 ]
             );

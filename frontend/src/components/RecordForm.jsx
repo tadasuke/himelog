@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import StarRating from './StarRating'
-import { getApiUrl, fetchWithAuth, getAuthToken, handleAuthError } from '../utils/api'
+import { getApiUrl, fetchWithAuth, getAuthToken, handleAuthError, showGenericErrorPopup } from '../utils/api'
 import './RecordForm.css'
 
 function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
@@ -405,6 +405,10 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
       const data = await response.json()
 
       if (!response.ok) {
+        // サーバー側の500エラーなど致命的な場合は共通ポップアップを表示
+        if (response.status >= 500) {
+          showGenericErrorPopup()
+        }
         throw new Error(data.message || data.error || (editingRecord ? '更新に失敗しました' : '登録に失敗しました'))
       }
 

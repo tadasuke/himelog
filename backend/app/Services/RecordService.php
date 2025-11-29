@@ -41,6 +41,9 @@ class RecordService
         $shopTypeId = $this->convertShopTypeToId($data['shop_type'] ?? $data['shop_type_id'] ?? null);
 
         $record = Record::create([
+            // アプリ内のユーザ識別は internal_user_id（users.id）を使用
+            'internal_user_id' => $userId,
+            // 既存スキーマ互換性のため、user_id にも同じ値を保存（NOT NULL制約対応）
             'user_id' => $userId,
             'shop_type_id' => $shopTypeId,
             'shop_name' => $data['shop_name'],
@@ -66,7 +69,7 @@ class RecordService
      */
     public function getRecords(string $userId)
     {
-        $records = Record::where('user_id', $userId)
+        $records = Record::where('internal_user_id', $userId)
             ->with('shopType')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -75,7 +78,7 @@ class RecordService
         foreach ($records as $record) {
             $girlImageUrl = null;
             if ($record->girl_name) {
-                $girl = Girl::where('user_id', $userId)
+                $girl = Girl::where('internal_user_id', $userId)
                     ->where('girl_name', $record->girl_name)
                     ->with(['girlImageUrls' => function ($query) {
                         $query->orderBy('display_order')->limit(1);
@@ -107,7 +110,7 @@ class RecordService
      */
     public function searchRecords(string $userId, array $filters = [])
     {
-        $query = Record::where('user_id', $userId)
+        $query = Record::where('internal_user_id', $userId)
             ->with('shopType');
 
         // お店の種類でフィルタ（複数選択可）
@@ -181,7 +184,7 @@ class RecordService
     public function getRecentRecordsForChart(string $userId, int $limit = 10)
     {
         // 最新のレコードを取得（来店日または作成日の降順）
-        $records = Record::where('user_id', $userId)
+        $records = Record::where('internal_user_id', $userId)
             ->orderByRaw('COALESCE(visit_date, created_at) DESC')
             ->limit($limit)
             ->get();
@@ -200,7 +203,7 @@ class RecordService
      */
     public function getShopTypeStatistics(string $userId): array
     {
-        $records = Record::where('user_id', $userId)
+        $records = Record::where('internal_user_id', $userId)
             ->with('shopType')
             ->get();
 
@@ -271,7 +274,7 @@ class RecordService
     public function updateRecord(Record $record, string $userId, array $data): Record
     {
         // 所有者チェック
-        if ($record->user_id !== $userId) {
+        if ($record->internal_user_id !== $userId) {
             Log::warning('Unauthorized record update attempt', [
                 'record_id' => $record->id,
                 'record_user_id' => $record->user_id,
@@ -307,7 +310,7 @@ class RecordService
     public function deleteRecord(Record $record, string $userId): void
     {
         // 所有者チェック
-        if ($record->user_id !== $userId) {
+        if ($record->internal_user_id !== $userId) {
             Log::warning('Unauthorized record deletion attempt', [
                 'record_id' => $record->id,
                 'record_user_id' => $record->user_id,
@@ -330,7 +333,7 @@ class RecordService
     {
         $shopTypeId = $this->convertShopTypeToId($shopType);
         
-        return Record::where('user_id', $userId)
+        return Record::where('internal_user_id', $userId)
             ->where('shop_type_id', $shopTypeId)
             ->distinct()
             ->pluck('shop_name')
@@ -345,7 +348,7 @@ class RecordService
     {
         $shopTypeId = $this->convertShopTypeToId($shopType);
         
-        return Record::where('user_id', $userId)
+        return Record::where('internal_user_id', $userId)
             ->where('shop_type_id', $shopTypeId)
             ->where('shop_name', $shopName)
             ->distinct()
@@ -359,7 +362,7 @@ class RecordService
      */
     public function getAllGirlNames(string $userId)
     {
-        return Record::where('user_id', $userId)
+        return Record::where('internal_user_id', $userId)
             ->whereNotNull('girl_name')
             ->where('girl_name', '!=', '')
             ->distinct()
@@ -375,7 +378,7 @@ class RecordService
      */
     public function getShops(string $userId): array
     {
-        $records = Record::where('user_id', $userId)
+        $records = Record::where('internal_user_id', $userId)
             ->with('shopType')
             ->get();
 
@@ -447,7 +450,7 @@ class RecordService
     {
         $shopTypeId = $this->convertShopTypeToId($shopType);
         
-        $records = Record::where('user_id', $userId)
+        $records = Record::where('internal_user_id', $userId)
             ->where('shop_type_id', $shopTypeId)
             ->where('shop_name', $shopName)
             ->with('shopType')
@@ -481,7 +484,7 @@ class RecordService
      */
     public function getGirlRecords(string $userId, string $girlName)
     {
-        return Record::where('user_id', $userId)
+        return Record::where('internal_user_id', $userId)
             ->where('girl_name', $girlName)
             ->with('shopType')
             ->orderBy('visit_date', 'desc')
@@ -935,7 +938,7 @@ HTML;
      */
     public function getOverallRatingRanking(string $userId, int $limit = 5)
     {
-        $allRecords = Record::where('user_id', $userId)
+        $allRecords = Record::where('internal_user_id', $userId)
             ->whereNotNull('overall_rating')
             ->where('overall_rating', '>', 0)
             ->with('shopType')
@@ -991,7 +994,7 @@ HTML;
      */
     public function getFaceRatingRanking(string $userId, int $limit = 5)
     {
-        $allRecords = Record::where('user_id', $userId)
+        $allRecords = Record::where('internal_user_id', $userId)
             ->whereNotNull('face_rating')
             ->where('face_rating', '>', 0)
             ->with('shopType')
@@ -1047,7 +1050,7 @@ HTML;
      */
     public function getStyleRatingRanking(string $userId, int $limit = 5)
     {
-        $allRecords = Record::where('user_id', $userId)
+        $allRecords = Record::where('internal_user_id', $userId)
             ->whereNotNull('style_rating')
             ->where('style_rating', '>', 0)
             ->with('shopType')
@@ -1103,7 +1106,7 @@ HTML;
      */
     public function getServiceRatingRanking(string $userId, int $limit = 5)
     {
-        $allRecords = Record::where('user_id', $userId)
+        $allRecords = Record::where('internal_user_id', $userId)
             ->whereNotNull('service_rating')
             ->where('service_rating', '>', 0)
             ->with('shopType')
@@ -1158,7 +1161,7 @@ HTML;
      */
     public function getVisitCountRanking(string $userId, int $limit = 5)
     {
-        $records = Record::where('user_id', $userId)
+        $records = Record::where('internal_user_id', $userId)
             ->with('shopType')
             ->get();
 
