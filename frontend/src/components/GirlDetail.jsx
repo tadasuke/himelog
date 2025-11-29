@@ -626,16 +626,18 @@ function GirlDetail({ user, girlName, onShopClick }) {
     
     const shopMap = new Map()
     records.forEach(record => {
-      if (record.shop_name && record.shop_type) {
-        const shopType = typeof record.shop_type === 'string' 
-          ? record.shop_type 
-          : record.shop_type?.name || record.shop_type_id || ''
-        const key = `${shopType}_${record.shop_name}`
+      const shopName = record.shop?.shop_name || record.shop_name
+      const shopType = record.shop_type || record.shop?.shop_type
+      if (shopName && shopType) {
+        const shopTypeName = typeof shopType === 'string' 
+          ? shopType 
+          : shopType?.name || record.shop?.shop_type_id || ''
+        const key = `${shopTypeName}_${shopName}`
         
         if (!shopMap.has(key)) {
           shopMap.set(key, {
-            shop_type: shopType,
-            shop_name: record.shop_name,
+            shop_type: shopTypeName,
+            shop_name: shopName,
             records: []
           })
         }
@@ -1218,7 +1220,7 @@ function GirlDetail({ user, girlName, onShopClick }) {
                     </span>
                   </div>
                   <div className="log-card-info">
-                    <h3 className="log-card-title">{record.girl_name}</h3>
+                    <h3 className="log-card-title">{record.girl_name || record.girl?.girl_name || ''}</h3>
                   </div>
                   <div className="log-card-ratings">
                     <div className="log-card-rating-item">

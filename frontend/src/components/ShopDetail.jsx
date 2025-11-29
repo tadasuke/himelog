@@ -876,17 +876,18 @@ function ShopDetail({ user, shopType, shopName, onGirlClick }) {
                 if (e.target.closest('.log-card-btn')) {
                   return
                 }
+                const girlName = record.girl_name || record.girl?.girl_name
                 console.log('Card clicked:', { 
-                  girl_name: record.girl_name, 
+                  girl_name: girlName, 
                   hasOnGirlClick: !!onGirlClick,
                   target: e.target,
                   currentTarget: e.currentTarget
                 })
-                if (record.girl_name && onGirlClick) {
-                  console.log('Navigating to girl:', record.girl_name)
+                if (girlName && onGirlClick) {
+                  console.log('Navigating to girl:', girlName)
                   e.preventDefault()
                   e.stopPropagation()
-                  onGirlClick(record.girl_name)
+                  onGirlClick(girlName)
                 }
               }
               return (
@@ -894,7 +895,7 @@ function ShopDetail({ user, shopType, shopName, onGirlClick }) {
                   key={record.id} 
                   className="log-card"
                   onClick={handleCardClick}
-                  style={{ cursor: record.girl_name && onGirlClick ? 'pointer' : 'default' }}
+                  style={{ cursor: (record.girl_name || record.girl?.girl_name) && onGirlClick ? 'pointer' : 'default' }}
                 >
                   <div className="log-card-header" style={{ position: 'relative' }}>
                     {record.public_token && (
@@ -921,16 +922,16 @@ function ShopDetail({ user, shopType, shopName, onGirlClick }) {
                       <div className="log-card-image">
                         <img 
                           src={record.girl_image_url} 
-                          alt={record.girl_name || 'ヒメの画像'}
+                          alt={record.girl_name || record.girl?.girl_name || 'ヒメの画像'}
                           className="log-card-image-img"
                         />
                       </div>
                     )}
                     <div className="log-card-header-content">
                       <div className="log-card-info">
-                        {record.girl_name ? (
+                        {(record.girl_name || record.girl?.girl_name) ? (
                           <h3 className="log-card-title log-card-title-clickable">
-                            {record.girl_name}
+                            {record.girl_name || record.girl?.girl_name || ''}
                           </h3>
                         ) : (
                           <h3 className="log-card-title">-</h3>

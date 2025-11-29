@@ -129,7 +129,7 @@ function RecordRanking({ user, onShopClick, onGirlClick }) {
                         <div className="ranking-image-container">
                           <img
                             src={record.girl_image_url}
-                            alt={record.girl_name || '画像'}
+                            alt={record.girl_name || record.girl?.girl_name || '画像'}
                             className="ranking-image"
                             onError={(e) => {
                               e.target.style.display = 'none'
@@ -143,41 +143,48 @@ function RecordRanking({ user, onShopClick, onGirlClick }) {
                             <span className="ranking-shop-type">
                               {record.shop_type || ''}
                             </span>
-                            {onShopClick && record.shop_type && record.shop_name ? (
-                              <span 
-                                className="ranking-shop-name clickable"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  onShopClick(record.shop_type, record.shop_name)
-                                }}
-                              >
-                                {record.shop_name}
-                              </span>
-                            ) : (
-                              <span className="ranking-shop-name">
-                                {record.shop_name}
-                              </span>
-                            )}
+                            {(() => {
+                              const shopName = record.shop?.shop_name || record.shop_name
+                              const shopType = record.shop_type
+                              return onShopClick && shopType && shopName ? (
+                                <span 
+                                  className="ranking-shop-name clickable"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    onShopClick(shopType, shopName)
+                                  }}
+                                >
+                                  {shopName}
+                                </span>
+                              ) : (
+                                <span className="ranking-shop-name">
+                                  {shopName || ''}
+                                </span>
+                              )
+                            })()}
                           </div>
                           <span className="ranking-date">
                             {formatDate(record.visit_date || record.created_at)}
                           </span>
                         </div>
-                        {record.girl_name && (
+                        {(record.girl_name || record.girl?.girl_name) && (
                           <div className="ranking-girl-name">
-                            {onGirlClick ? (
-                              <span 
-                                className="ranking-girl-name-link clickable"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  onGirlClick(record.girl_name)
-                                }}
-                              >
-                                {record.girl_name}
-                              </span>
-                            ) : (
-                              <span>{record.girl_name}</span>
-                            )}
+                            {(() => {
+                              const girlName = record.girl_name || record.girl?.girl_name
+                              return onGirlClick ? (
+                                <span 
+                                  className="ranking-girl-name-link clickable"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    onGirlClick(girlName)
+                                  }}
+                                >
+                                  {girlName}
+                                </span>
+                              ) : (
+                                <span>{girlName}</span>
+                              )
+                            })()}
                           </div>
                         )}
                       </div>

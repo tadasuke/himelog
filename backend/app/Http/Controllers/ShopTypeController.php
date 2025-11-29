@@ -38,27 +38,42 @@ class ShopTypeController extends Controller
                 return $result;
             }
 
-            // ユーザーがレビューを書いたことがあるお店の種類IDを取得
-            $userShopTypeIds = Record::where('user_id', $userId)
-                ->distinct()
-                ->pluck('shop_type_id')
+            // ユーザーがレビューを書いたことがあるお店の種類IDを取得（shops経由）
+            $userShopTypeIds = Record::where('internal_user_id', $userId)
+                ->whereNotNull('shop_id')
+                ->with('shop')
+                ->get()
+                ->pluck('shop.shop_type_id')
                 ->filter()
+                ->unique()
+                ->values()
                 ->toArray();
 
             // ユーザーの最新の記録のお店の種類を取得
-            $latestRecord = Record::where('user_id', $userId)
+            $latestRecord = Record::where('internal_user_id', $userId)
+                ->whereNotNull('shop_id')
+                ->with('shop')
                 ->orderBy('created_at', 'desc')
                 ->first();
             
-            // shop_type_idを直接使用（リレーションではなく）
-            $latestShopTypeId = $latestRecord ? $latestRecord->shop_type_id : null;
+            $latestShopTypeId = $latestRecord && $latestRecord->shop
+                ? $latestRecord->shop->shop_type_id
+                : null;
 
-            // ユーザーの記録を種類ごとに集計
-            $shopTypeCounts = Record::where('user_id', $userId)
-                ->select('shop_type_id', DB::raw('count(*) as count'))
-                ->groupBy('shop_type_id')
-                ->orderBy('count', 'desc')
-                ->pluck('count', 'shop_type_id')
+            // ユーザーの記録を種類ごとに集計（shops経由）
+            $shopTypeCounts = Record::where('internal_user_id', $userId)
+                ->whereNotNull('shop_id')
+                ->with('shop')
+                ->get()
+                ->groupBy(function ($record) {
+                    return $record->shop ? $record->shop->shop_type_id : null;
+                })
+                ->filter(function ($group, $key) {
+                    return !is_null($key);
+                })
+                ->map(function ($group) {
+                    return $group->count();
+                })
                 ->toArray();
 
             // 全てのお店の種類をユーザーの使用履歴に基づいて並び替え
