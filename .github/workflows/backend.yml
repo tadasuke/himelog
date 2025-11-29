@@ -43,12 +43,22 @@ jobs:
         run: |
           if [ "${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production' || 'develop') }}" == "production" ]; then
             echo "env=production" >> $GITHUB_OUTPUT
-            echo "instance_id=${{ secrets.PRODUCTION_EC2_INSTANCE_ID || 'i-0c78bb1a7c6be7fa9' }}" >> $GITHUB_OUTPUT
+            PRODUCTION_INSTANCE_ID="${{ secrets.PRODUCTION_EC2_INSTANCE_ID }}"
+            if [ -z "$PRODUCTION_INSTANCE_ID" ]; then
+              echo "Error: PRODUCTION_EC2_INSTANCE_ID is not set in GitHub Secrets" >&2
+              exit 1
+            fi
+            echo "instance_id=$PRODUCTION_INSTANCE_ID" >> $GITHUB_OUTPUT
             echo "aws_role=arn:aws:iam::034427362829:role/himelog_ec2_production" >> $GITHUB_OUTPUT
             echo "branch=main" >> $GITHUB_OUTPUT
           else
             echo "env=develop" >> $GITHUB_OUTPUT
-            echo "instance_id=${{ secrets.DEVELOP_EC2_INSTANCE_ID || 'i-0c78bb1a7c6be7fa9' }}" >> $GITHUB_OUTPUT
+            DEVELOP_INSTANCE_ID="${{ secrets.DEVELOP_EC2_INSTANCE_ID }}"
+            if [ -z "$DEVELOP_INSTANCE_ID" ]; then
+              echo "Error: DEVELOP_EC2_INSTANCE_ID is not set in GitHub Secrets" >&2
+              exit 1
+            fi
+            echo "instance_id=$DEVELOP_INSTANCE_ID" >> $GITHUB_OUTPUT
             echo "aws_role=arn:aws:iam::034427362829:role/himelog_ec2_develop" >> $GITHUB_OUTPUT
             echo "branch=develop" >> $GITHUB_OUTPUT
           fi
