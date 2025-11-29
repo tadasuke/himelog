@@ -11,6 +11,7 @@ const __dirname = dirname(__filename)
 export default defineConfig(({ mode }) => {
   // 環境変数を読み込む
   const env = loadEnv(mode, process.cwd(), '')
+  const isProduction = mode === 'production'
   
   // ビルド時にconfig.jsを生成
   const generateConfigJs = () => {
@@ -54,6 +55,12 @@ window.REACT_APP_URL = ${JSON.stringify(reactAppUrl)};
         }
       }
     ],
+    // 本番環境のみでminifyを有効化（Viteの標準機能を使用）
+    build: {
+      minify: isProduction ? 'esbuild' : false, // 本番環境のみでminify（esbuildはViteのデフォルト）
+      cssMinify: isProduction, // CSSも本番環境のみでminify
+      sourcemap: !isProduction, // 開発環境のみでソースマップを生成
+    },
   server: {
     proxy: {
       '/api': {

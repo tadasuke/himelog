@@ -9,6 +9,7 @@ use App\Models\Girl;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Services\S3Service;
+use MatthiasMullie\Minify\HTML;
 
 class RecordService
 {
@@ -1110,7 +1111,32 @@ HTML;
 </html>
 HTML;
 
+        // 本番環境のみでHTMLをminify
+        if (config('app.env') === 'production') {
+            $html = $this->minifyHtml($html);
+        }
+
         return $html;
+    }
+
+    /**
+     * HTMLをminify（本番環境用）
+     * 
+     * @param string $html
+     * @return string
+     */
+    private function minifyHtml(string $html): string
+    {
+        try {
+            $minifier = new HTML($html);
+            return $minifier->minify();
+        } catch (\Exception $e) {
+            // minifyに失敗した場合は元のHTMLを返す（安全のため）
+            Log::warning('HTML minify failed', [
+                'error' => $e->getMessage(),
+            ]);
+            return $html;
+        }
     }
 
     /**
