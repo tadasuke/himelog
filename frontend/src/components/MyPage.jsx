@@ -68,6 +68,23 @@ function MyPage({ user, onLogout }) {
         </div>
       </div>
 
+      <div className="mypage-menu-section">
+        <div className="mypage-menu-list">
+          <a
+            href="https://x.com/hime_log_jp"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mypage-menu-item mypage-menu-link"
+          >
+            <span className="mypage-menu-icon">
+              <img src="/favicon.png" alt="ヒメログ" className="mypage-favicon" />
+            </span>
+            <span className="mypage-menu-label">ヒメログ公式Xアカウント</span>
+            <span className="mypage-menu-arrow">›</span>
+          </a>
+        </div>
+      </div>
+
       <div className="mypage-version">
         <p className="mypage-version-text">v{APP_VERSION}</p>
       </div>
