@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import StarRating from './StarRating'
-import { getApiUrl, fetchWithAuth, getAuthToken, handleAuthError } from '../utils/api'
+import { getApiUrl, fetchWithAuth, getAuthToken, handleAuthError, showGenericErrorPopup } from '../utils/api'
 import './RecordForm.css'
 
 function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
@@ -24,10 +24,12 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
     return `${year}-${month}-${day}`
   }
 
+  // shopTypeの初期値：shop.shop_type_idを優先、なければ空文字列（shopTypes読み込み後に設定）
+  // shop_nameもshop.shop_nameから取得
   const [formData, setFormData] = useState({
-    shopType: editingRecord?.shop_type_id || editingRecord?.shop_type || '',
-    shopName: editingRecord?.shop_name || '',
-    girlName: editingRecord?.girl_name || '',
+    shopType: editingRecord?.shop?.shop_type_id || editingRecord?.shop_type_id || '',
+    shopName: editingRecord?.shop?.shop_name || editingRecord?.shop_name || '',
+    girlName: editingRecord?.girl?.girl_name || editingRecord?.girl_name || '',
     visitDate: editingRecord ? formatDateForInput(editingRecord.visit_date) : getTodayString(),
     faceRating: editingRecord?.face_rating || 1,
     styleRating: editingRecord?.style_rating || 1,
@@ -73,13 +75,54 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
         const data = await response.json()
 
         if (response.ok && data.success) {
-          setShopTypes(data.shop_types || [])
+          const shopTypesList = data.shop_types || []
+          setShopTypes(shopTypesList)
+          
           // shopTypesが読み込まれた後、既に選択されているshopTypeがあればお店名を取得
-          if (formData.shopType) {
-            const selectedShopType = (data.shop_types || []).find(st => String(st.id) === String(formData.shopType))
+          // 編集モードの場合、shop_type_idが優先、なければshop_type（文字列）からIDを逆引き
+          let shopTypeId = formData.shopType
+          if (editingRecord && !shopTypeId) {
+            // formData.shopTypeが空の場合、editingRecordから取得を試みる
+            shopTypeId = editingRecord.shop?.shop_type_id || editingRecord.shop_type_id
+            const shopTypeName = editingRecord.shop_type || editingRecord.shop?.shop_type
+            
+            if (!shopTypeId && shopTypeName) {
+              const foundShopType = shopTypesList.find(st => st.name === shopTypeName)
+              if (foundShopType) {
+                shopTypeId = foundShopType.id
+                // formData.shopTypeをIDに更新
+                setFormData(prev => ({
+                  ...prev,
+                  shopType: foundShopType.id
+                }))
+              }
+            } else if (shopTypeId) {
+              // shopTypeIdが見つかった場合、formDataを更新
+              setFormData(prev => ({
+                ...prev,
+                shopType: shopTypeId
+              }))
+            }
+          } else if (formData.shopType) {
+            // shopTypeが数値（ID）でない場合、shop_type（文字列）からIDを逆引き
+            if (isNaN(Number(formData.shopType))) {
+              const foundShopType = shopTypesList.find(st => st.name === formData.shopType)
+              if (foundShopType) {
+                shopTypeId = foundShopType.id
+                // formData.shopTypeをIDに更新
+                setFormData(prev => ({
+                  ...prev,
+                  shopType: foundShopType.id
+                }))
+              }
+            }
+          }
+          
+          if (shopTypeId) {
+            const selectedShopType = shopTypesList.find(st => String(st.id) === String(shopTypeId))
             if (selectedShopType && selectedShopType.name !== 'その他') {
-              console.log('Shop types loaded, fetching shop names for selected type:', formData.shopType)
-              fetchShopNames(formData.shopType)
+              console.log('Shop types loaded, fetching shop names for selected type:', shopTypeId)
+              fetchShopNames(shopTypeId)
             }
           }
         } else {
@@ -93,25 +136,47 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
     }
 
     fetchShopTypes()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
 
-  // 編集モードの場合、初期データを読み込む
+  // 編集モードの場合、初期データを読み込む（shopTypesが読み込まれた後）
   useEffect(() => {
-    if (editingRecord && userId) {
+    if (editingRecord && userId && shopTypes.length > 0) {
+      console.log('Editing record loaded:', editingRecord)
       // お店の種類が設定されている場合、お店名を取得
-      const shopType = editingRecord.shop_type_id || editingRecord.shop_type
-      const shopTypeName = editingRecord.shop_type
-      if (shopType && shopTypeName !== 'その他') {
-        // shop_type_idが使える場合はそれを使い、なければ名前を使う
-        fetchShopNames(shopType)
+      // shop.shop_type_idを優先的に使用し、なければshop_type（文字列）からIDを逆引き
+      let shopTypeId = editingRecord.shop?.shop_type_id || editingRecord.shop_type_id
+      const shopTypeName = editingRecord.shop_type || editingRecord.shop?.shop_type
+      
+      if (!shopTypeId && shopTypeName) {
+        const foundShopType = shopTypes.find(st => st.name === shopTypeName)
+        if (foundShopType) {
+          shopTypeId = foundShopType.id
+          // formData.shopTypeをIDに更新
+          setFormData(prev => ({
+            ...prev,
+            shopType: foundShopType.id
+          }))
+        }
       }
-      // お店の種類とお店名が設定されている場合、女の子の名前を取得
-      if (shopType && editingRecord.shop_name) {
-        fetchGirlNames(shopType, editingRecord.shop_name)
+      
+      if (shopTypeId) {
+        const selectedShopType = shopTypes.find(st => String(st.id) === String(shopTypeId))
+        console.log('Selected shop type:', { shopTypeId, selectedShopType })
+        if (selectedShopType && selectedShopType.name !== 'その他') {
+          fetchShopNames(shopTypeId)
+        }
+        // お店の種類とお店名が設定されている場合、女の子の名前を取得
+        const shopName = editingRecord.shop?.shop_name || editingRecord.shop_name
+        if (shopName && shopTypeId) {
+          fetchGirlNames(shopTypeId, shopName)
+        }
+      } else {
+        console.warn('No shop type ID found for editing record:', editingRecord)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editingRecord, userId])
+  }, [editingRecord, userId, shopTypes])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -248,8 +313,9 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
         const shopNamesList = data.shop_names || []
         console.log('fetchShopNames: Shop names list:', shopNamesList)
         // 編集モードの場合、既存のお店名がリストに含まれていない場合は追加
-        if (editingRecord && editingRecord.shop_name && !shopNamesList.includes(editingRecord.shop_name)) {
-          shopNamesList.push(editingRecord.shop_name)
+        const editingShopName = editingRecord?.shop?.shop_name || editingRecord?.shop_name
+        if (editingRecord && editingShopName && !shopNamesList.includes(editingShopName)) {
+          shopNamesList.push(editingShopName)
         }
         setShopNames(shopNamesList)
         setIsNewShopName(false)
@@ -306,8 +372,9 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
       if (response.ok && data.success) {
         const girlNamesList = data.girl_names || []
         // 編集モードの場合、既存の女の子の名前がリストに含まれていない場合は追加
-        if (editingRecord && editingRecord.girl_name && !girlNamesList.includes(editingRecord.girl_name)) {
-          girlNamesList.push(editingRecord.girl_name)
+        const editingGirlName = editingRecord?.girl?.girl_name || editingRecord?.girl_name
+        if (editingRecord && editingGirlName && !girlNamesList.includes(editingGirlName)) {
+          girlNamesList.push(editingGirlName)
         }
         setGirlNames(girlNamesList)
         setIsNewGirlName(false)
@@ -405,6 +472,10 @@ function RecordForm({ userId, onRecordAdded, editingRecord, onCancelEdit }) {
       const data = await response.json()
 
       if (!response.ok) {
+        // サーバー側の500エラーなど致命的な場合は共通ポップアップを表示
+        if (response.status >= 500) {
+          showGenericErrorPopup()
+        }
         throw new Error(data.message || data.error || (editingRecord ? '更新に失敗しました' : '登録に失敗しました'))
       }
 

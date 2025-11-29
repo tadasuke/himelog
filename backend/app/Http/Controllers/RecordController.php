@@ -417,7 +417,7 @@ class RecordController extends Controller
                 ], 401);
             }
 
-            $record = Record::where('user_id', $authenticatedUserId)
+            $record = Record::where('internal_user_id', $authenticatedUserId)
                 ->find($id);
             
             if (!$record) {
@@ -560,7 +560,7 @@ class RecordController extends Controller
                 ], 401);
             }
 
-            $record = Record::where('user_id', $authenticatedUserId)
+            $record = Record::where('internal_user_id', $authenticatedUserId)
                 ->find($id);
             
             if (!$record) {
@@ -612,7 +612,7 @@ class RecordController extends Controller
                 ], 401);
             }
 
-            $record = Record::where('user_id', $authenticatedUserId)
+            $record = Record::where('internal_user_id', $authenticatedUserId)
                 ->find($id);
             
             if (!$record) {
@@ -624,7 +624,7 @@ class RecordController extends Controller
             // 公開オプションを取得（デフォルトはtrue）
             $includeShopName = filter_var($request->input('include_shop_name', true), FILTER_VALIDATE_BOOLEAN);
             $includeGirlName = filter_var($request->input('include_girl_name', true), FILTER_VALIDATE_BOOLEAN);
-            $publicReview = $request->input('public_review', '');
+            $publicReview = $request->input('public_review', '') ?? '';
 
             try {
                 $publicUrl = $this->recordService->publishRecord(
@@ -676,7 +676,7 @@ class RecordController extends Controller
                 ], 401);
             }
 
-            $record = Record::where('user_id', $authenticatedUserId)
+            $record = Record::where('internal_user_id', $authenticatedUserId)
                 ->find($id);
             
             if (!$record) {
@@ -734,7 +734,7 @@ class RecordController extends Controller
                 ], 401);
             }
 
-            $record = Record::where('user_id', $authenticatedUserId)
+            $record = Record::where('internal_user_id', $authenticatedUserId)
                 ->find($id);
             
             if (!$record) {

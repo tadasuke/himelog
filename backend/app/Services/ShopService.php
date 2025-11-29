@@ -40,7 +40,7 @@ class ShopService
     {
         $shopTypeId = $this->convertShopTypeToId($shopType);
         
-        return Shop::where('user_id', $userId)
+        return Shop::where('internal_user_id', $userId)
             ->where('shop_type_id', $shopTypeId)
             ->where('shop_name', $shopName)
             ->with(['shopType', 'shopUrls'])
@@ -56,23 +56,19 @@ class ShopService
         
         DB::beginTransaction();
         try {
-            // お店を取得または作成
-            $shop = Shop::firstOrCreate(
-                [
-                    'user_id' => $userId,
-                    'shop_type_id' => $shopTypeId,
-                    'shop_name' => $shopName,
-                ],
-                [
-                    'memo' => $memo,
-                ]
-            );
+            // お店の詳細は、既にレビュー投稿時に作成されたshopsレコードに対して更新のみ行う
+            $shop = Shop::where('internal_user_id', $userId)
+                ->where('shop_type_id', $shopTypeId)
+                ->where('shop_name', $shopName)
+                ->first();
 
-            // 既存のお店の場合はmemoを更新
-            if ($shop->wasRecentlyCreated === false) {
-                $shop->memo = $memo;
-                $shop->save();
+            if (!$shop) {
+                throw new \Exception('先にこのお店のレビューを登録してください。');
             }
+
+            // memoを更新
+            $shop->memo = $memo;
+            $shop->save();
 
             // 既存のURLを削除
             $shop->shopUrls()->delete();

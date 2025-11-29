@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\XUser;
+use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
@@ -167,24 +167,25 @@ class XAuthService implements AuthServiceInterface
             $userData = $data['data'];
             
             // ユーザー情報を取得
-            $userId = $userData['id'] ?? null;
+            // provider_user_id は X の user id
+            $providerUserId = $userData['id'] ?? null;
             $userName = $userData['name'] ?? null;
             $userUsername = $userData['username'] ?? null;
             // emailは認証済みアプリでのみ取得可能で、通常のOAuth 2.0では取得できない
             $userEmail = null;
             $userPicture = $userData['profile_image_url'] ?? null;
 
-            if (!$userId) {
+            if (!$providerUserId) {
                 Log::warning('X auth: User ID not found', ['data' => $userData]);
                 return null;
             }
 
             // 4. ユーザーIDベースのキャッシュを確認（トークンが更新されても同じユーザーなら再利用可能）
-            $userCacheKey = 'x_auth_user:' . $userId;
+            $userCacheKey = 'x_auth_user:' . $providerUserId;
             $cachedUserByUserId = Cache::get($userCacheKey);
             if ($cachedUserByUserId !== null) {
                 Log::info('X auth: Using cached user data by user ID', [
-                    'user_id' => $userId
+                    'provider_user_id' => $providerUserId
                 ]);
                 // トークンベースのキャッシュも更新
                 Cache::put($tokenCacheKey, $cachedUserByUserId, self::CACHE_TTL);
@@ -193,13 +194,14 @@ class XAuthService implements AuthServiceInterface
 
             // 5. データベースからユーザー情報を取得を試みる（30日以内に検証済みの場合）
             try {
-                $dbUser = XUser::where('x_user_id', $userId)
+                $dbUser = User::where('provider', 'x')
+                    ->where('provider_user_id', $providerUserId)
                     ->where('last_verified_at', '>=', now()->subDays(self::DB_USER_VALID_DAYS))
                     ->first();
                 
                 if ($dbUser !== null) {
                     Log::info('X auth: Using user data from database', [
-                        'user_id' => $userId,
+                        'provider_user_id' => $providerUserId,
                         'last_verified_at' => $dbUser->last_verified_at
                     ]);
                     $dbUserData = $dbUser->toAuthArray();
@@ -211,7 +213,7 @@ class XAuthService implements AuthServiceInterface
             } catch (\Exception $e) {
                 // DB取得に失敗しても処理は続行（APIから取得）
                 Log::warning('X auth: Failed to get user data from database', [
-                    'user_id' => $userId,
+                    'provider_user_id' => $providerUserId,
                     'error' => $e->getMessage()
                 ]);
             }
@@ -220,31 +222,42 @@ class XAuthService implements AuthServiceInterface
             $displayName = $userName ?: $userUsername;
 
             $userData = [
-                'user_id' => $userId,
+                'user_id' => $dbUser->id,
+                'provider_user_id' => $providerUserId,
                 'email' => $userEmail,
                 'name' => $displayName,
                 'username' => $userUsername,
                 'avatar' => $userPicture,
             ];
 
-            // 6. データベースに保存または更新
+            // 6. データベースに保存または更新（共通 users テーブル）
             try {
-                XUser::updateOrCreate(
-                    ['x_user_id' => $userId],
+                $dbUser = User::updateOrCreate(
+                    [
+                        'provider' => 'x',
+                        'provider_user_id' => $providerUserId,
+                    ],
                     [
                         'name' => $displayName,
+                        'email' => $userEmail,
                         'username' => $userUsername,
                         'avatar' => $userPicture,
                         'last_verified_at' => now(),
+                        'last_login_at' => now(),
+                        'status' => 'active',
                     ]
                 );
-                Log::info('X auth: User data saved to database', [
-                    'user_id' => $userId
+
+                // registered_at は作成時にモデル側で自動設定される
+
+                Log::info('X auth: User data saved to users table', [
+                    'provider_user_id' => $providerUserId,
+                    'users_table_id' => $dbUser->id,
                 ]);
             } catch (\Exception $e) {
                 // DB保存に失敗しても処理は続行
-                Log::warning('X auth: Failed to save user data to database', [
-                    'user_id' => $userId,
+                Log::warning('X auth: Failed to save user data to users table', [
+                    'provider_user_id' => $providerUserId,
                     'error' => $e->getMessage()
                 ]);
             }
@@ -254,7 +267,7 @@ class XAuthService implements AuthServiceInterface
             Cache::put($userCacheKey, $userData, self::CACHE_TTL);
             
             Log::info('X auth: Token verified and cached', [
-                'user_id' => $userId,
+                'provider_user_id' => $providerUserId,
                 'cache_ttl' => self::CACHE_TTL
             ]);
 

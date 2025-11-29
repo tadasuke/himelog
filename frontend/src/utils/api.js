@@ -493,3 +493,18 @@ export const handleAuthError = (response) => {
   }
 }
 
+/**
+ * 共通エラーメッセージをポップアップ表示
+ * 主にサーバー側の500エラーなど、再試行が必要なケースで使用
+ *
+ * @param {string} [message] - カスタムメッセージ（省略時はデフォルト文言）
+ */
+export const showGenericErrorPopup = (message) => {
+  const text =
+    message ||
+    'エラーが発生しました。少し時間を置いてから再度お試しください。'
+  // ひとまずブラウザ標準のalertでポップアップ表示
+  // 将来的にカスタムモーダルに差し替え可能なよう、関数に切り出している
+  window.alert(text)
+}
+

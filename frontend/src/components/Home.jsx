@@ -686,7 +686,7 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
                       <div className="log-card-image">
                         <img 
                           src={record.girl_image_url} 
-                          alt={record.girl_name || 'ヒメの画像'}
+                          alt={record.girl_name || record.girl?.girl_name || 'ヒメの画像'}
                           className="log-card-image-img"
                         />
                       </div>
@@ -706,11 +706,11 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
                               const shopType = typeof record.shop_type === 'string' 
                                 ? record.shop_type 
                                 : record.shop_type?.name || record.shop_type_id || ''
-                              onShopClick(shopType, record.shop_name)
+                              onShopClick(shopType, record.shop?.shop_name || record.shop_name || '')
                             }
                           }}
                         >
-                          {record.shop_name}
+                          {record.shop?.shop_name || record.shop_name || ''}
                         </span>
                       </div>
                       <span className="log-card-date">
@@ -723,12 +723,13 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
                       className="log-card-title clickable"
                       onClick={(e) => {
                         e.stopPropagation()
-                        if (onGirlClick && record.girl_name) {
-                          onGirlClick(record.girl_name)
+                        const girlName = record.girl_name || record.girl?.girl_name
+                        if (onGirlClick && girlName) {
+                          onGirlClick(girlName)
                         }
                       }}
                     >
-                      {record.girl_name}
+                      {record.girl_name || record.girl?.girl_name || ''}
                     </h3>
                   </div>
                   <div 

@@ -15,10 +15,19 @@ class Girl extends Model
 
     protected $fillable = [
         'id',
-        'user_id',
+        'internal_user_id',
+        'shop_id',
         'girl_name',
         'memo',
     ];
+
+    /**
+     * Shopとのリレーション
+     */
+    public function shop()
+    {
+        return $this->belongsTo(Shop::class, 'shop_id');
+    }
 
     /**
      * GirlUrlとのリレーション

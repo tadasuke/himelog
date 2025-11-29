@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Models\Record;
+use App\Models\Shop;
 use App\Models\ShopType;
 use App\Models\Girl;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use App\Services\S3Service;
 
 class RecordService
@@ -38,26 +40,61 @@ class RecordService
      */
     public function createRecord(string $userId, array $data): Record
     {
-        $shopTypeId = $this->convertShopTypeToId($data['shop_type'] ?? $data['shop_type_id'] ?? null);
+        return DB::transaction(function () use ($userId, $data): Record {
+            $shopTypeId = $this->convertShopTypeToId($data['shop_type'] ?? $data['shop_type_id'] ?? null);
 
-        $record = Record::create([
-            'user_id' => $userId,
-            'shop_type_id' => $shopTypeId,
-            'shop_name' => $data['shop_name'],
-            'girl_name' => $data['girl_name'] ?? null,
-            'visit_date' => $data['visit_date'],
-            'face_rating' => $data['face_rating'] ?? null,
-            'style_rating' => $data['style_rating'] ?? null,
-            'service_rating' => $data['service_rating'] ?? null,
-            'overall_rating' => $data['overall_rating'] ?? null,
-            'review' => $data['review'] ?? null,
-            'price' => $data['price'] ?? null,
-            'course' => $data['course'] ?? null,
-        ]);
+            // レビュー投稿時にお店・ヒメのデータを作成（または取得）する
+            $shop = null;
+            if (!empty($data['shop_name']) && $shopTypeId !== null) {
+                $shop = Shop::firstOrCreate(
+                    [
+                        'internal_user_id' => $userId,
+                        'shop_type_id' => $shopTypeId,
+                        'shop_name' => $data['shop_name'],
+                    ],
+                    [
+                        'memo' => null,
+                    ]
+                );
+            }
 
-        Log::info('Record created', ['record_id' => $record->id, 'user_id' => $record->user_id]);
+            $girl = null;
+            if (!empty($data['girl_name'])) {
+                $girl = Girl::firstOrCreate(
+                    [
+                        'internal_user_id' => $userId,
+                        'shop_id' => $shop ? $shop->id : null,
+                        'girl_name' => $data['girl_name'],
+                    ],
+                    [
+                        'memo' => null,
+                    ]
+                );
+            }
 
-        return $record->load('shopType');
+            $record = Record::create([
+                // アプリ内のユーザ識別は internal_user_id（users.id）を使用
+                'internal_user_id' => $userId,
+                'shop_id' => $shop ? $shop->id : null,
+                'girl_id' => $girl ? $girl->id : null,
+                'visit_date' => $data['visit_date'],
+                'face_rating' => $data['face_rating'] ?? null,
+                'style_rating' => $data['style_rating'] ?? null,
+                'service_rating' => $data['service_rating'] ?? null,
+                'overall_rating' => $data['overall_rating'] ?? null,
+                'review' => $data['review'] ?? null,
+                'price' => $data['price'] ?? null,
+                'course' => $data['course'] ?? null,
+            ]);
+
+            Log::info('Record created', [
+                'record_id' => $record->id,
+                'internal_user_id' => $record->internal_user_id,
+            ]);
+
+            // お店・お店の種類情報・ヒメ情報も含めて返す
+            return $record->load(['shop', 'shop.shopType', 'girl']);
+        });
     }
 
     /**
@@ -66,23 +103,20 @@ class RecordService
      */
     public function getRecords(string $userId)
     {
-        $records = Record::where('user_id', $userId)
-            ->with('shopType')
+        $records = Record::where('internal_user_id', $userId)
+            ->with(['shop', 'shop.shopType', 'girl'])
             ->orderBy('created_at', 'desc')
             ->get();
 
         // 各記録にヒメの画像URL（最初の1枚目）を追加
         foreach ($records as $record) {
             $girlImageUrl = null;
-            if ($record->girl_name) {
-                $girl = Girl::where('user_id', $userId)
-                    ->where('girl_name', $record->girl_name)
-                    ->with(['girlImageUrls' => function ($query) {
-                        $query->orderBy('display_order')->limit(1);
-                    }])
-                    ->first();
-                
-                if ($girl && $girl->girlImageUrls && $girl->girlImageUrls->count() > 0) {
+            if ($record->girl) {
+                $girl = $record->girl->loadMissing(['girlImageUrls' => function ($query) {
+                    $query->orderBy('display_order')->limit(1);
+                }]);
+
+                if ($girl->girlImageUrls && $girl->girlImageUrls->count() > 0) {
                     $girlImageUrl = $girl->girlImageUrls->first()->image_url;
                 }
             }
@@ -107,14 +141,16 @@ class RecordService
      */
     public function searchRecords(string $userId, array $filters = [])
     {
-        $query = Record::where('user_id', $userId)
-            ->with('shopType');
+        $query = Record::where('internal_user_id', $userId)
+            ->with(['shop', 'shop.shopType', 'girl']);
 
         // お店の種類でフィルタ（複数選択可）
         if (!empty($filters['shop_type_ids']) && is_array($filters['shop_type_ids'])) {
             $shopTypeIds = array_filter(array_map('intval', $filters['shop_type_ids']));
             if (!empty($shopTypeIds)) {
-                $query->whereIn('shop_type_id', $shopTypeIds);
+                $query->whereHas('shop', function ($q) use ($shopTypeIds) {
+                    $q->whereIn('shop_type_id', $shopTypeIds);
+                });
             }
         }
 
@@ -156,16 +192,13 @@ class RecordService
         // 各記録にヒメの画像URL（最初の1枚目）を追加
         foreach ($records as $record) {
             $girlImageUrl = null;
-            if ($record->girl_name) {
-                $girl = Girl::where('user_id', $userId)
-                    ->where('girl_name', $record->girl_name)
-                    ->with(['girlImageUrls' => function ($query) {
-                        $query->orderBy('display_order')->limit(1);
-                    }])
-                    ->first();
+            if ($record->girl) {
+                $record->girl->loadMissing(['girlImageUrls' => function ($query) {
+                    $query->orderBy('display_order')->limit(1);
+                }]);
                 
-                if ($girl && $girl->girlImageUrls && $girl->girlImageUrls->count() > 0) {
-                    $girlImageUrl = $girl->girlImageUrls->first()->image_url;
+                if ($record->girl->girlImageUrls && $record->girl->girlImageUrls->count() > 0) {
+                    $girlImageUrl = $record->girl->girlImageUrls->first()->image_url;
                 }
             }
             $record->girl_image_url = $girlImageUrl;
@@ -181,7 +214,8 @@ class RecordService
     public function getRecentRecordsForChart(string $userId, int $limit = 10)
     {
         // 最新のレコードを取得（来店日または作成日の降順）
-        $records = Record::where('user_id', $userId)
+        $records = Record::where('internal_user_id', $userId)
+            ->with(['shop', 'shop.shopType', 'girl'])
             ->orderByRaw('COALESCE(visit_date, created_at) DESC')
             ->limit($limit)
             ->get();
@@ -200,13 +234,14 @@ class RecordService
      */
     public function getShopTypeStatistics(string $userId): array
     {
-        $records = Record::where('user_id', $userId)
-            ->with('shopType')
+        $records = Record::where('internal_user_id', $userId)
+            ->with(['shop', 'shop.shopType'])
             ->get();
 
         // お店のタイプごとに集計
         $statistics = [];
         foreach ($records as $record) {
+            // Recordモデルのアクセサ（shop_type）を利用して種別名を取得
             $shopTypeName = $record->shop_type ?? '不明';
             
             if (!isset($statistics[$shopTypeName])) {
@@ -237,7 +272,7 @@ class RecordService
      */
     public function getOverallRatingStatistics(string $userId): array
     {
-        $records = Record::where('user_id', $userId)
+        $records = Record::where('internal_user_id', $userId)
             ->whereNotNull('overall_rating')
             ->where('overall_rating', '>', 0)
             ->get();
@@ -270,35 +305,151 @@ class RecordService
      */
     public function updateRecord(Record $record, string $userId, array $data): Record
     {
-        // 所有者チェック
-        if ($record->user_id !== $userId) {
-            Log::warning('Unauthorized record update attempt', [
+        return DB::transaction(function () use ($record, $userId, $data): Record {
+            // 所有者チェック
+            if ($record->internal_user_id !== $userId) {
+                Log::warning('Unauthorized record update attempt', [
+                    'record_id' => $record->id,
+                    'record_internal_user_id' => $record->internal_user_id,
+                    'authenticated_user_id' => $userId
+                ]);
+                throw new \Exception('この記録を更新する権限がありません');
+            }
+
+            $shopTypeId = $this->convertShopTypeToId($data['shop_type'] ?? $data['shop_type_id'] ?? null);
+
+            // お店の情報を更新または取得
+            $shop = null;
+            $girl = null;
+            $shopNameChanged = false;
+            
+            if (!empty($data['shop_name']) && $shopTypeId !== null) {
+                // 既存のお店を検索
+                $existingShop = Shop::where('internal_user_id', $userId)
+                    ->where('shop_type_id', $shopTypeId)
+                    ->where('shop_name', $data['shop_name'])
+                    ->first();
+                
+                // お店の名前が変更されたかどうかをチェック
+                $currentShopName = $record->shop ? $record->shop->shop_name : null;
+                $shopNameChanged = ($currentShopName !== $data['shop_name']);
+                
+                if (!$existingShop) {
+                    // 同じお店の種類で同じ名前のお店が存在しなかった場合
+                    // shopsデータを作成
+                    $shop = Shop::create([
+                        'internal_user_id' => $userId,
+                        'shop_type_id' => $shopTypeId,
+                        'shop_name' => $data['shop_name'],
+                        'memo' => null,
+                    ]);
+                    
+                    // ヒメの名前が指定されている場合、girlsデータも作成
+                    // firstOrCreateを使用して、既に存在する場合は取得、存在しない場合は作成
+                    if (!empty($data['girl_name'])) {
+                        $girl = Girl::firstOrCreate(
+                            [
+                                'internal_user_id' => $userId,
+                                'shop_id' => $shop->id,
+                                'girl_name' => $data['girl_name'],
+                            ],
+                            [
+                                'memo' => null,
+                            ]
+                        );
+                    }
+                } else {
+                    // 同じお店の種類で同じ名前のお店が存在した場合
+                    $shop = $existingShop;
+                    
+                    // そのお店に同じ名前のヒメが存在するかチェック
+                    if (!empty($data['girl_name'])) {
+                        $existingGirl = Girl::where('internal_user_id', $userId)
+                            ->where('shop_id', $shop->id)
+                            ->where('girl_name', $data['girl_name'])
+                            ->first();
+                        
+                        if (!$existingGirl) {
+                            // そのお店に同じ名前のヒメが存在しなかった場合
+                            // ヒメデータを作成
+                            $girl = Girl::create([
+                                'internal_user_id' => $userId,
+                                'shop_id' => $shop->id,
+                                'girl_name' => $data['girl_name'],
+                                'memo' => null,
+                            ]);
+                        } else {
+                            $girl = $existingGirl;
+                        }
+                    }
+                }
+            } elseif ($record->shop_id) {
+                // shop_nameが変更されていない場合は既存のshopを使用
+                $shop = Shop::find($record->shop_id);
+                
+                // ヒメの情報を更新または取得（既存のロジック）
+                if (!empty($data['girl_name'])) {
+                    $girl = Girl::firstOrCreate(
+                        [
+                            'internal_user_id' => $userId,
+                            'shop_id' => $shop ? $shop->id : null,
+                            'girl_name' => $data['girl_name'],
+                        ],
+                        [
+                            'memo' => null,
+                        ]
+                    );
+                }
+            } else {
+                // shop_nameが指定されていない場合でも、girl_nameが指定されている場合は処理
+                if (!empty($data['girl_name'])) {
+                    $girl = Girl::firstOrCreate(
+                        [
+                            'internal_user_id' => $userId,
+                            'shop_id' => null,
+                            'girl_name' => $data['girl_name'],
+                        ],
+                        [
+                            'memo' => null,
+                        ]
+                    );
+                }
+            }
+
+            // レコードを更新
+            $updateData = [
+                'visit_date' => $data['visit_date'],
+                'face_rating' => $data['face_rating'] ?? null,
+                'style_rating' => $data['style_rating'] ?? null,
+                'service_rating' => $data['service_rating'] ?? null,
+                'overall_rating' => $data['overall_rating'] ?? null,
+                'review' => $data['review'] ?? null,
+                'price' => $data['price'] ?? null,
+                'course' => $data['course'] ?? null,
+            ];
+
+            // shop_idとgirl_idを更新
+            if ($shop) {
+                $updateData['shop_id'] = $shop->id;
+            }
+            if ($girl) {
+                $updateData['girl_id'] = $girl->id;
+            } elseif (empty($data['girl_name'])) {
+                // girl_nameが空の場合はgirl_idをnullに設定
+                $updateData['girl_id'] = null;
+            }
+
+            $record->update($updateData);
+
+            Log::info('Record updated', [
                 'record_id' => $record->id,
-                'record_user_id' => $record->user_id,
-                'authenticated_user_id' => $userId
+                'internal_user_id' => $record->internal_user_id,
+                'shop_id' => $shop ? $shop->id : null,
+                'girl_id' => $girl ? $girl->id : null,
             ]);
-            throw new \Exception('この記録を更新する権限がありません');
-        }
 
-        $shopTypeId = $this->convertShopTypeToId($data['shop_type'] ?? $data['shop_type_id'] ?? null);
-
-        $record->update([
-            'shop_type_id' => $shopTypeId,
-            'shop_name' => $data['shop_name'],
-            'girl_name' => $data['girl_name'] ?? null,
-            'visit_date' => $data['visit_date'],
-            'face_rating' => $data['face_rating'] ?? null,
-            'style_rating' => $data['style_rating'] ?? null,
-            'service_rating' => $data['service_rating'] ?? null,
-            'overall_rating' => $data['overall_rating'] ?? null,
-            'review' => $data['review'] ?? null,
-            'price' => $data['price'] ?? null,
-            'course' => $data['course'] ?? null,
-        ]);
-
-        Log::info('Record updated', ['record_id' => $record->id, 'user_id' => $record->user_id]);
-
-        return $record->load('shopType');
+            return $record->load(['shop', 'shop.shopType', 'girl']);
+        });
     }
 
     /**
@@ -306,21 +457,26 @@ class RecordService
      */
     public function deleteRecord(Record $record, string $userId): void
     {
-        // 所有者チェック
-        if ($record->user_id !== $userId) {
-            Log::warning('Unauthorized record deletion attempt', [
-                'record_id' => $record->id,
-                'record_user_id' => $record->user_id,
-                'authenticated_user_id' => $userId
+        DB::transaction(function () use ($record, $userId): void {
+            // 所有者チェック
+            if ($record->internal_user_id !== $userId) {
+                Log::warning('Unauthorized record deletion attempt', [
+                    'record_id' => $record->id,
+                    'record_internal_user_id' => $record->internal_user_id,
+                    'authenticated_user_id' => $userId
+                ]);
+                throw new \Exception('この記録を削除する権限がありません');
+            }
+
+            $recordId = $record->id;
+            $recordInternalUserId = $record->internal_user_id;
+            $record->delete();
+
+            Log::info('Record deleted', [
+                'record_id' => $recordId,
+                'internal_user_id' => $recordInternalUserId,
             ]);
-            throw new \Exception('この記録を削除する権限がありません');
-        }
-
-        $recordId = $record->id;
-        $recordUserId = $record->user_id;
-        $record->delete();
-
-        Log::info('Record deleted', ['record_id' => $recordId, 'user_id' => $recordUserId]);
+        });
     }
 
     /**
@@ -330,11 +486,19 @@ class RecordService
     {
         $shopTypeId = $this->convertShopTypeToId($shopType);
         
-        return Record::where('user_id', $userId)
-            ->where('shop_type_id', $shopTypeId)
+        // Recordからshop_idを取得し、そのshop_idでShopを取得して重複を排除
+        $shopIds = Record::where('internal_user_id', $userId)
+            ->whereNotNull('shop_id')
+            ->whereHas('shop', function ($q) use ($shopTypeId) {
+                $q->where('shop_type_id', $shopTypeId);
+            })
             ->distinct()
+            ->pluck('shop_id')
+            ->filter();
+        
+        return Shop::whereIn('id', $shopIds)
+            ->orderBy('shop_name')
             ->pluck('shop_name')
-            ->sort()
             ->values();
     }
 
@@ -345,11 +509,17 @@ class RecordService
     {
         $shopTypeId = $this->convertShopTypeToId($shopType);
         
-        return Record::where('user_id', $userId)
-            ->where('shop_type_id', $shopTypeId)
-            ->where('shop_name', $shopName)
-            ->distinct()
-            ->pluck('girl_name')
+        return Record::where('internal_user_id', $userId)
+            ->whereHas('shop', function ($q) use ($shopTypeId, $shopName) {
+                $q->where('shop_type_id', $shopTypeId)
+                  ->where('shop_name', $shopName);
+            })
+            ->whereNotNull('girl_id')
+            ->with('girl')
+            ->get()
+            ->pluck('girl.girl_name')
+            ->filter()
+            ->unique()
             ->sort()
             ->values();
     }
@@ -359,11 +529,13 @@ class RecordService
      */
     public function getAllGirlNames(string $userId)
     {
-        return Record::where('user_id', $userId)
-            ->whereNotNull('girl_name')
-            ->where('girl_name', '!=', '')
-            ->distinct()
-            ->pluck('girl_name')
+        return Record::where('internal_user_id', $userId)
+            ->whereNotNull('girl_id')
+            ->with('girl')
+            ->get()
+            ->pluck('girl.girl_name')
+            ->filter()
+            ->unique()
             ->sort()
             ->values();
     }
@@ -375,15 +547,15 @@ class RecordService
      */
     public function getShops(string $userId): array
     {
-        $records = Record::where('user_id', $userId)
-            ->with('shopType')
+        $records = Record::where('internal_user_id', $userId)
+            ->with(['shop', 'shop.shopType'])
             ->get();
 
         $shopsMap = [];
         
-        // お店ごとにグループ化（shop_type_idとshop_nameの組み合わせで一意に識別）
+        // お店ごとにグループ化（shop_idで一意に識別）
         $groupedRecords = $records->groupBy(function ($record) {
-            return $record->shop_type_id . '_' . $record->shop_name;
+            return $record->shop_id ?: 'unknown_' . $record->shop_name;
         });
 
         foreach ($groupedRecords as $shopRecords) {
@@ -416,7 +588,9 @@ class RecordService
                 ->max();
 
             $shopsMap[] = [
-                'name' => $firstRecord->shop_name,
+                'name' => $firstRecord->shop && $firstRecord->shop->shop_name
+                    ? $firstRecord->shop->shop_name
+                    : null,
                 'shop_type' => $firstRecord->shop_type,
                 'visit_count' => $visitCount,
                 'average_rating' => $averageRating,
@@ -447,10 +621,12 @@ class RecordService
     {
         $shopTypeId = $this->convertShopTypeToId($shopType);
         
-        $records = Record::where('user_id', $userId)
-            ->where('shop_type_id', $shopTypeId)
-            ->where('shop_name', $shopName)
-            ->with('shopType')
+        $records = Record::where('internal_user_id', $userId)
+            ->whereHas('shop', function ($q) use ($shopTypeId, $shopName) {
+                $q->where('shop_type_id', $shopTypeId)
+                  ->where('shop_name', $shopName);
+            })
+            ->with(['shop', 'shop.shopType', 'girl'])
             ->orderBy('visit_date', 'desc')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -458,16 +634,13 @@ class RecordService
         // 各記録にヒメの画像URL（最初の1枚目）を追加
         foreach ($records as $record) {
             $girlImageUrl = null;
-            if ($record->girl_name) {
-                $girl = Girl::where('user_id', $userId)
-                    ->where('girl_name', $record->girl_name)
-                    ->with(['girlImageUrls' => function ($query) {
-                        $query->orderBy('display_order')->limit(1);
-                    }])
-                    ->first();
+            if ($record->girl) {
+                $record->girl->loadMissing(['girlImageUrls' => function ($query) {
+                    $query->orderBy('display_order')->limit(1);
+                }]);
                 
-                if ($girl && $girl->girlImageUrls && $girl->girlImageUrls->count() > 0) {
-                    $girlImageUrl = $girl->girlImageUrls->first()->image_url;
+                if ($record->girl->girlImageUrls && $record->girl->girlImageUrls->count() > 0) {
+                    $girlImageUrl = $record->girl->girlImageUrls->first()->image_url;
                 }
             }
             $record->girl_image_url = $girlImageUrl;
@@ -481,9 +654,11 @@ class RecordService
      */
     public function getGirlRecords(string $userId, string $girlName)
     {
-        return Record::where('user_id', $userId)
-            ->where('girl_name', $girlName)
-            ->with('shopType')
+        return Record::where('internal_user_id', $userId)
+            ->whereHas('girl', function ($q) use ($girlName) {
+                $q->where('girl_name', $girlName);
+            })
+            ->with(['shop', 'shop.shopType', 'girl'])
             ->orderBy('visit_date', 'desc')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -501,38 +676,41 @@ class RecordService
      */
     public function publishRecord(Record $record, string $userId, bool $includeShopName = true, bool $includeGirlName = true, string $publicReview = ''): string
     {
-        // 所有者チェック
-        if ($record->user_id !== $userId) {
-            Log::warning('Unauthorized record publish attempt', [
+        // DB更新部分のみトランザクションで保護し、S3アップロードは外側で実行
+        return DB::transaction(function () use ($record, $userId, $includeShopName, $includeGirlName, $publicReview): string {
+            // 所有者チェック
+            if ($record->internal_user_id !== $userId) {
+                Log::warning('Unauthorized record publish attempt', [
+                    'record_id' => $record->id,
+                    'record_internal_user_id' => $record->internal_user_id,
+                    'authenticated_user_id' => $userId
+                ]);
+                throw new \Exception('この記録を公開する権限がありません');
+            }
+
+            // 公開用トークンを生成（既に存在する場合は再利用）
+            if (!$record->public_token) {
+                $record->generatePublicToken();
+            }
+
+            // HTMLを生成
+            $html = $this->generatePublicHtml($record, $includeShopName, $includeGirlName, $publicReview);
+
+            // S3にアップロード（外部サービスだが、ここで失敗した場合は例外でロールバックされる）
+            $s3Service = new S3Service();
+            $filename = $record->public_token . '.html';
+            $publicUrl = $s3Service->uploadHtml($html, $filename);
+
+            Log::info('Record published', [
                 'record_id' => $record->id,
-                'record_user_id' => $record->user_id,
-                'authenticated_user_id' => $userId
+                'public_token' => $record->public_token,
+                'public_url' => $publicUrl,
+                'include_shop_name' => $includeShopName,
+                'include_girl_name' => $includeGirlName,
             ]);
-            throw new \Exception('この記録を公開する権限がありません');
-        }
 
-        // 公開用トークンを生成（既に存在する場合は再利用）
-        if (!$record->public_token) {
-            $record->generatePublicToken();
-        }
-
-        // HTMLを生成
-        $html = $this->generatePublicHtml($record, $includeShopName, $includeGirlName, $publicReview);
-
-        // S3にアップロード
-        $s3Service = new S3Service();
-        $filename = $record->public_token . '.html';
-        $publicUrl = $s3Service->uploadHtml($html, $filename);
-
-        Log::info('Record published', [
-            'record_id' => $record->id,
-            'public_token' => $record->public_token,
-            'public_url' => $publicUrl,
-            'include_shop_name' => $includeShopName,
-            'include_girl_name' => $includeGirlName,
-        ]);
-
-        return $publicUrl;
+            return $publicUrl;
+        });
     }
 
     /**
@@ -543,33 +721,35 @@ class RecordService
      */
     public function unpublishRecord(Record $record, string $userId): void
     {
-        // 所有者チェック
-        if ($record->user_id !== $userId) {
-            Log::warning('Unauthorized record unpublish attempt', [
+        DB::transaction(function () use ($record, $userId): void {
+            // 所有者チェック
+            if ($record->internal_user_id !== $userId) {
+                Log::warning('Unauthorized record unpublish attempt', [
+                    'record_id' => $record->id,
+                    'record_internal_user_id' => $record->internal_user_id,
+                    'authenticated_user_id' => $userId
+                ]);
+                throw new \Exception('この記録の公開を削除する権限がありません');
+            }
+
+            // 公開用トークンが存在しない場合は何もしない
+            if (!$record->public_token) {
+                return;
+            }
+
+            // S3からHTMLファイルを削除
+            $s3Service = new S3Service();
+            $filename = $record->public_token . '.html';
+            $s3Service->deleteHtml($filename);
+
+            // public_tokenを削除
+            $record->public_token = null;
+            $record->save();
+
+            Log::info('Record unpublished', [
                 'record_id' => $record->id,
-                'record_user_id' => $record->user_id,
-                'authenticated_user_id' => $userId
             ]);
-            throw new \Exception('この記録の公開を削除する権限がありません');
-        }
-
-        // 公開用トークンが存在しない場合は何もしない
-        if (!$record->public_token) {
-            return;
-        }
-
-        // S3からHTMLファイルを削除
-        $s3Service = new S3Service();
-        $filename = $record->public_token . '.html';
-        $s3Service->deleteHtml($filename);
-
-        // public_tokenを削除
-        $record->public_token = null;
-        $record->save();
-
-        Log::info('Record unpublished', [
-            'record_id' => $record->id,
-        ]);
+        });
     }
 
     /**
@@ -582,7 +762,8 @@ class RecordService
      */
     private function generatePublicHtml(Record $record, bool $includeShopName = true, bool $includeGirlName = true, string $publicReview = ''): string
     {
-        $record->load('shopType');
+        $record->load(['shop', 'shop.shopType', 'girl']);
+        // Recordモデルのアクセサからお店の種類名を取得
         $shopTypeName = $record->shop_type ?? '';
 
         // 公開用の感想を使用（指定されていない場合は元の感想を使用）
@@ -595,11 +776,15 @@ class RecordService
 
         // タイトルと説明を生成（含める情報に基づく）
         $titleParts = [];
-        if ($includeGirlName && $record->girl_name) {
-            $titleParts[] = "{$record->girl_name}さんのレビュー";
+        $girlName = $record->girl_name;
+        if ($includeGirlName && $girlName) {
+            $titleParts[] = "{$girlName}さんのレビュー";
         }
-        if ($includeShopName && $record->shop_name) {
-            $titleParts[] = $record->shop_name;
+        $shopName = $record->shop && $record->shop->shop_name 
+            ? $record->shop->shop_name 
+            : null;
+        if ($includeShopName && $shopName) {
+            $titleParts[] = $shopName;
         }
         if (empty($titleParts)) {
             $title = "レビュー - ヒメログ";
@@ -627,12 +812,12 @@ class RecordService
         }
 
         // お店の名前とヒメの名前の表示値を準備
-        $shopNameDisplay = ($includeShopName && $record->shop_name) 
-            ? htmlspecialchars($record->shop_name, ENT_QUOTES, 'UTF-8') 
+        $shopNameDisplay = ($includeShopName && $shopName) 
+            ? htmlspecialchars($shopName, ENT_QUOTES, 'UTF-8') 
             : '内緒';
         
-        $girlNameDisplay = ($includeGirlName && $record->girl_name) 
-            ? htmlspecialchars($record->girl_name, ENT_QUOTES, 'UTF-8') 
+        $girlNameDisplay = ($includeGirlName && $girlName) 
+            ? htmlspecialchars($girlName, ENT_QUOTES, 'UTF-8') 
             : '内緒';
         
         // h1タグ用のタイトル（リンク付き）
@@ -823,7 +1008,7 @@ class RecordService
             </div>
 HTML;
 
-        if ($record->girl_name) {
+        if ($girlName) {
             $html .= <<<HTML
             <div class="info-item">
                 <div class="info-label">ヒメの名前</div>
@@ -935,26 +1120,26 @@ HTML;
      */
     public function getOverallRatingRanking(string $userId, int $limit = 5)
     {
-        $allRecords = Record::where('user_id', $userId)
+        $allRecords = Record::where('internal_user_id', $userId)
             ->whereNotNull('overall_rating')
             ->where('overall_rating', '>', 0)
-            ->with('shopType')
+            ->with(['shop', 'shop.shopType', 'girl'])
             ->orderBy('overall_rating', 'desc')
             ->orderBy('created_at', 'desc')
             ->get();
 
         // 同じヒメのレビューが複数ある場合、最も評価が高いものだけを残す
         $uniqueRecords = [];
-        $girlNamesSeen = [];
+        $girlIdsSeen = [];
         foreach ($allRecords as $record) {
-            $girlName = $record->girl_name ?? '';
-            if (empty($girlName)) {
-                // ヒメ名がない場合はそのまま追加
+            $girlId = $record->girl_id ?? null;
+            if (empty($girlId)) {
+                // ヒメIDがない場合はそのまま追加
                 $uniqueRecords[] = $record;
             } else {
-                // ヒメ名がある場合、まだ見ていないヒメ名なら追加
-                if (!isset($girlNamesSeen[$girlName])) {
-                    $girlNamesSeen[$girlName] = true;
+                // ヒメIDがある場合、まだ見ていないヒメIDなら追加
+                if (!isset($girlIdsSeen[$girlId])) {
+                    $girlIdsSeen[$girlId] = true;
                     $uniqueRecords[] = $record;
                 }
             }
@@ -966,16 +1151,13 @@ HTML;
         // 各記録にヒメの画像URL（最初の1枚目）を追加
         foreach ($records as $record) {
             $girlImageUrl = null;
-            if ($record->girl_name) {
-                $girl = Girl::where('user_id', $userId)
-                    ->where('girl_name', $record->girl_name)
-                    ->with(['girlImageUrls' => function ($query) {
-                        $query->orderBy('display_order')->limit(1);
-                    }])
-                    ->first();
+            if ($record->girl) {
+                $record->girl->loadMissing(['girlImageUrls' => function ($query) {
+                    $query->orderBy('display_order')->limit(1);
+                }]);
                 
-                if ($girl && $girl->girlImageUrls && $girl->girlImageUrls->count() > 0) {
-                    $girlImageUrl = $girl->girlImageUrls->first()->image_url;
+                if ($record->girl->girlImageUrls && $record->girl->girlImageUrls->count() > 0) {
+                    $girlImageUrl = $record->girl->girlImageUrls->first()->image_url;
                 }
             }
             $record->girl_image_url = $girlImageUrl;
@@ -991,26 +1173,26 @@ HTML;
      */
     public function getFaceRatingRanking(string $userId, int $limit = 5)
     {
-        $allRecords = Record::where('user_id', $userId)
+        $allRecords = Record::where('internal_user_id', $userId)
             ->whereNotNull('face_rating')
             ->where('face_rating', '>', 0)
-            ->with('shopType')
+            ->with(['shop', 'shop.shopType', 'girl'])
             ->orderBy('face_rating', 'desc')
             ->orderBy('created_at', 'desc')
             ->get();
 
         // 同じヒメのレビューが複数ある場合、最も評価が高いものだけを残す
         $uniqueRecords = [];
-        $girlNamesSeen = [];
+        $girlIdsSeen = [];
         foreach ($allRecords as $record) {
-            $girlName = $record->girl_name ?? '';
-            if (empty($girlName)) {
-                // ヒメ名がない場合はそのまま追加
+            $girlId = $record->girl_id ?? null;
+            if (empty($girlId)) {
+                // ヒメIDがない場合はそのまま追加
                 $uniqueRecords[] = $record;
             } else {
-                // ヒメ名がある場合、まだ見ていないヒメ名なら追加
-                if (!isset($girlNamesSeen[$girlName])) {
-                    $girlNamesSeen[$girlName] = true;
+                // ヒメIDがある場合、まだ見ていないヒメIDなら追加
+                if (!isset($girlIdsSeen[$girlId])) {
+                    $girlIdsSeen[$girlId] = true;
                     $uniqueRecords[] = $record;
                 }
             }
@@ -1022,16 +1204,13 @@ HTML;
         // 各記録にヒメの画像URL（最初の1枚目）を追加
         foreach ($records as $record) {
             $girlImageUrl = null;
-            if ($record->girl_name) {
-                $girl = Girl::where('user_id', $userId)
-                    ->where('girl_name', $record->girl_name)
-                    ->with(['girlImageUrls' => function ($query) {
-                        $query->orderBy('display_order')->limit(1);
-                    }])
-                    ->first();
+            if ($record->girl) {
+                $record->girl->loadMissing(['girlImageUrls' => function ($query) {
+                    $query->orderBy('display_order')->limit(1);
+                }]);
                 
-                if ($girl && $girl->girlImageUrls && $girl->girlImageUrls->count() > 0) {
-                    $girlImageUrl = $girl->girlImageUrls->first()->image_url;
+                if ($record->girl->girlImageUrls && $record->girl->girlImageUrls->count() > 0) {
+                    $girlImageUrl = $record->girl->girlImageUrls->first()->image_url;
                 }
             }
             $record->girl_image_url = $girlImageUrl;
@@ -1047,26 +1226,26 @@ HTML;
      */
     public function getStyleRatingRanking(string $userId, int $limit = 5)
     {
-        $allRecords = Record::where('user_id', $userId)
+        $allRecords = Record::where('internal_user_id', $userId)
             ->whereNotNull('style_rating')
             ->where('style_rating', '>', 0)
-            ->with('shopType')
+            ->with(['shop', 'shop.shopType', 'girl'])
             ->orderBy('style_rating', 'desc')
             ->orderBy('created_at', 'desc')
             ->get();
 
         // 同じヒメのレビューが複数ある場合、最も評価が高いものだけを残す
         $uniqueRecords = [];
-        $girlNamesSeen = [];
+        $girlIdsSeen = [];
         foreach ($allRecords as $record) {
-            $girlName = $record->girl_name ?? '';
-            if (empty($girlName)) {
-                // ヒメ名がない場合はそのまま追加
+            $girlId = $record->girl_id ?? null;
+            if (empty($girlId)) {
+                // ヒメIDがない場合はそのまま追加
                 $uniqueRecords[] = $record;
             } else {
-                // ヒメ名がある場合、まだ見ていないヒメ名なら追加
-                if (!isset($girlNamesSeen[$girlName])) {
-                    $girlNamesSeen[$girlName] = true;
+                // ヒメIDがある場合、まだ見ていないヒメIDなら追加
+                if (!isset($girlIdsSeen[$girlId])) {
+                    $girlIdsSeen[$girlId] = true;
                     $uniqueRecords[] = $record;
                 }
             }
@@ -1078,16 +1257,13 @@ HTML;
         // 各記録にヒメの画像URL（最初の1枚目）を追加
         foreach ($records as $record) {
             $girlImageUrl = null;
-            if ($record->girl_name) {
-                $girl = Girl::where('user_id', $userId)
-                    ->where('girl_name', $record->girl_name)
-                    ->with(['girlImageUrls' => function ($query) {
-                        $query->orderBy('display_order')->limit(1);
-                    }])
-                    ->first();
+            if ($record->girl) {
+                $record->girl->loadMissing(['girlImageUrls' => function ($query) {
+                    $query->orderBy('display_order')->limit(1);
+                }]);
                 
-                if ($girl && $girl->girlImageUrls && $girl->girlImageUrls->count() > 0) {
-                    $girlImageUrl = $girl->girlImageUrls->first()->image_url;
+                if ($record->girl->girlImageUrls && $record->girl->girlImageUrls->count() > 0) {
+                    $girlImageUrl = $record->girl->girlImageUrls->first()->image_url;
                 }
             }
             $record->girl_image_url = $girlImageUrl;
@@ -1103,26 +1279,26 @@ HTML;
      */
     public function getServiceRatingRanking(string $userId, int $limit = 5)
     {
-        $allRecords = Record::where('user_id', $userId)
+        $allRecords = Record::where('internal_user_id', $userId)
             ->whereNotNull('service_rating')
             ->where('service_rating', '>', 0)
-            ->with('shopType')
+            ->with(['shop', 'shop.shopType', 'girl'])
             ->orderBy('service_rating', 'desc')
             ->orderBy('created_at', 'desc')
             ->get();
 
         // 同じヒメのレビューが複数ある場合、最も評価が高いものだけを残す
         $uniqueRecords = [];
-        $girlNamesSeen = [];
+        $girlIdsSeen = [];
         foreach ($allRecords as $record) {
-            $girlName = $record->girl_name ?? '';
-            if (empty($girlName)) {
-                // ヒメ名がない場合はそのまま追加
+            $girlId = $record->girl_id ?? null;
+            if (empty($girlId)) {
+                // ヒメIDがない場合はそのまま追加
                 $uniqueRecords[] = $record;
             } else {
-                // ヒメ名がある場合、まだ見ていないヒメ名なら追加
-                if (!isset($girlNamesSeen[$girlName])) {
-                    $girlNamesSeen[$girlName] = true;
+                // ヒメIDがある場合、まだ見ていないヒメIDなら追加
+                if (!isset($girlIdsSeen[$girlId])) {
+                    $girlIdsSeen[$girlId] = true;
                     $uniqueRecords[] = $record;
                 }
             }
@@ -1134,16 +1310,13 @@ HTML;
         // 各記録にヒメの画像URL（最初の1枚目）を追加
         foreach ($records as $record) {
             $girlImageUrl = null;
-            if ($record->girl_name) {
-                $girl = Girl::where('user_id', $userId)
-                    ->where('girl_name', $record->girl_name)
-                    ->with(['girlImageUrls' => function ($query) {
-                        $query->orderBy('display_order')->limit(1);
-                    }])
-                    ->first();
+            if ($record->girl) {
+                $record->girl->loadMissing(['girlImageUrls' => function ($query) {
+                    $query->orderBy('display_order')->limit(1);
+                }]);
                 
-                if ($girl && $girl->girlImageUrls && $girl->girlImageUrls->count() > 0) {
-                    $girlImageUrl = $girl->girlImageUrls->first()->image_url;
+                if ($record->girl->girlImageUrls && $record->girl->girlImageUrls->count() > 0) {
+                    $girlImageUrl = $record->girl->girlImageUrls->first()->image_url;
                 }
             }
             $record->girl_image_url = $girlImageUrl;
@@ -1158,14 +1331,18 @@ HTML;
      */
     public function getVisitCountRanking(string $userId, int $limit = 5)
     {
-        $records = Record::where('user_id', $userId)
-            ->with('shopType')
+        $records = Record::where('internal_user_id', $userId)
+            ->with(['shop', 'shop.shopType', 'girl'])
             ->get();
 
         // お店名とヒメ名の組み合わせごとに集計
         $visitCounts = [];
         foreach ($records as $record) {
-            $key = ($record->shop_name ?? '') . '_' . ($record->girl_name ?? '');
+            $shopName = $record->shop && $record->shop->shop_name 
+                ? $record->shop->shop_name 
+                : '';
+            $girlName = $record->girl_name ?? '';
+            $key = $shopName . '_' . $girlName;
             if (!isset($visitCounts[$key])) {
                 $visitCounts[$key] = [
                     'count' => 0,
@@ -1203,7 +1380,8 @@ HTML;
         foreach ($topRecords as $record) {
             $girlImageUrl = null;
             if ($record->girl_name) {
-                $girl = Girl::where('user_id', $userId)
+                $girl = Girl::where('internal_user_id', $userId)
+                    ->where('shop_id', $record->shop_id)
                     ->where('girl_name', $record->girl_name)
                     ->with(['girlImageUrls' => function ($query) {
                         $query->orderBy('display_order')->limit(1);

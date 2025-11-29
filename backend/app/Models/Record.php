@@ -17,10 +17,9 @@ class Record extends Model
     protected $fillable = [
         'id',
         'public_token',
-        'user_id',
-        'shop_type_id',
-        'shop_name',
-        'girl_name',
+        'internal_user_id',
+        'shop_id',
+        'girl_id',
         'visit_date',
         'face_rating',
         'style_rating',
@@ -35,7 +34,7 @@ class Record extends Model
         'visit_date' => 'date',
     ];
 
-    protected $appends = ['shop_type'];
+    protected $appends = ['shop_type', 'girl_name'];
     
     protected $hidden = ['shopType'];
 
@@ -62,11 +61,19 @@ class Record extends Model
     }
 
     /**
-     * ShopTypeとのリレーション
+     * お店（shopsテーブル）とのリレーション
      */
-    public function shopType()
+    public function shop()
     {
-        return $this->belongsTo(ShopType::class, 'shop_type_id');
+        return $this->belongsTo(Shop::class, 'shop_id');
+    }
+
+    /**
+     * ヒメ（girlsテーブル）とのリレーション
+     */
+    public function girl()
+    {
+        return $this->belongsTo(Girl::class, 'girl_id');
     }
 
     /**
@@ -74,19 +81,47 @@ class Record extends Model
      */
     public function getShopTypeAttribute()
     {
-        // リレーションが既にロードされている場合
-        if ($this->relationLoaded('shopType')) {
-            $shopType = $this->getRelationValue('shopType');
-            return $shopType ? $shopType->name : null;
+        // shopsテーブル経由でお店の種類名を取得
+        if ($this->relationLoaded('shop')) {
+            $shop = $this->getRelationValue('shop');
+            if ($shop) {
+                // Shopモデルのshop_typeアクセサを使用
+                // shopTypeリレーションがロードされていない場合はロードする
+                if (!$shop->relationLoaded('shopType')) {
+                    $shop->load('shopType');
+                }
+                // Shopモデルのshop_typeアクセサを呼び出す
+                return $shop->shop_type;
+            }
+            return null;
         }
-        
-        // リレーションがロードされていない場合は、shop_type_idから取得
-        if ($this->shop_type_id) {
-            $shopType = ShopType::find($this->shop_type_id);
-            return $shopType ? $shopType->name : null;
+
+        $shop = $this->shop;
+        if ($shop) {
+            // shopTypeリレーションがロードされていない場合はロードする
+            if (!$shop->relationLoaded('shopType')) {
+                $shop->load('shopType');
+            }
+            // Shopモデルのshop_typeアクセサを呼び出す
+            return $shop->shop_type;
         }
         
         return null;
+    }
+
+    /**
+     * girl_nameアクセサ（girlsテーブルを参照）
+     */
+    public function getGirlNameAttribute()
+    {
+        // girlsテーブル経由でヒメ名を取得
+        if ($this->relationLoaded('girl')) {
+            $girl = $this->getRelationValue('girl');
+            return $girl ? $girl->girl_name : null;
+        }
+
+        $girl = $this->girl;
+        return $girl ? $girl->girl_name : null;
     }
 
     protected static function boot()

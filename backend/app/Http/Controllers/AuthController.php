@@ -167,10 +167,11 @@ class AuthController extends Controller
 
             Log::info('Google login: Success', ['user_id' => $userId, 'email' => $userEmail]);
             
-            // ログイン履歴をDBに保存
+            // ログイン履歴をDBに保存（Googleは provider_user_id ベースのまま）
             try {
                 LoginHistory::create([
                     'user_id' => $userId,
+                    // internal_user_id は users テーブルに該当レコードがある場合に後続マイグレーションで補完される
                     'user_email' => $userEmail,
                     'user_name' => $userName,
                     'ip_address' => $request->ip(),
@@ -349,10 +350,11 @@ class AuthController extends Controller
 
             Log::info('X callback: Success', ['user_id' => $user['user_id'], 'email' => $user['email'] ?? 'not provided']);
             
-            // ログイン履歴をDBに保存
+            // ログイン履歴をDBに保存（users.id を格納）
             try {
                 LoginHistory::create([
-                    'user_id' => $user['user_id'],
+                    'user_id' => $user['provider_user_id'] ?? null,
+                    'internal_user_id' => $user['user_id'],
                     'user_email' => $user['email'] ?? null,
                     'user_name' => $user['name'] ?? null,
                     'ip_address' => $request->ip(),
@@ -432,10 +434,11 @@ class AuthController extends Controller
 
             Log::info('X login: Success', ['user_id' => $user['user_id'], 'email' => $user['email'] ?? 'not provided']);
             
-            // ログイン履歴をDBに保存
+            // ログイン履歴をDBに保存（users.id を格納）
             try {
                 LoginHistory::create([
-                    'user_id' => $user['user_id'],
+                    'user_id' => $user['provider_user_id'] ?? null,
+                    'internal_user_id' => $user['user_id'],
                     'user_email' => $user['email'] ?? null,
                     'user_name' => $user['name'] ?? null,
                     'ip_address' => $request->ip(),

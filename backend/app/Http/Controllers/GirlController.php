@@ -36,6 +36,7 @@ class GirlController extends Controller
             }
 
             $girlName = $request->query('girl_name');
+            $shopId = $request->query('shop_id');
             
             if (!$girlName) {
                 return response()->json([
@@ -43,7 +44,7 @@ class GirlController extends Controller
                 ], 400);
             }
 
-            $girl = $this->girlService->getGirl($authenticatedUserId, $girlName);
+            $girl = $this->girlService->getGirl($authenticatedUserId, $girlName, $shopId);
 
             $result = response()->json([
                 'success' => true,
@@ -90,13 +91,15 @@ class GirlController extends Controller
             $memo = $request->input('memo');
             $urls = $request->input('urls', []);
             $imageUrls = $request->input('image_urls', []);
+            $shopId = $request->input('shop_id');
 
             $girl = $this->girlService->createOrUpdateGirl(
                 $authenticatedUserId,
                 $girlName,
                 $memo,
                 $urls,
-                $imageUrls
+                $imageUrls,
+                $shopId
             );
 
             $result = response()->json([
