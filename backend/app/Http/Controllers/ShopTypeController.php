@@ -45,12 +45,6 @@ class ShopTypeController extends Controller
                 ->filter()
                 ->toArray();
 
-            // ユーザーがレビューを書いたことがあるお店の種類だけを取得
-            $userShopTypes = ShopType::whereIn('id', $userShopTypeIds)
-                ->orderBy('display_order', 'asc')
-                ->orderBy('name', 'asc')
-                ->get();
-
             // ユーザーの最新の記録のお店の種類を取得
             $latestRecord = Record::where('user_id', $userId)
                 ->orderBy('created_at', 'desc')
@@ -67,30 +61,44 @@ class ShopTypeController extends Controller
                 ->pluck('count', 'shop_type_id')
                 ->toArray();
 
-            // 並び順を決定
-            $sortedShopTypes = $userShopTypes->sort(function ($a, $b) use ($latestShopTypeId, $shopTypeCounts) {
+            // 全てのお店の種類をユーザーの使用履歴に基づいて並び替え
+            $sortedShopTypes = $allShopTypes->sort(function ($a, $b) use ($latestShopTypeId, $shopTypeCounts, $userShopTypeIds) {
                 $idA = $a->id;
                 $idB = $b->id;
                 
-                // 最新の記録のお店の種類を最初に
-                if ($latestShopTypeId) {
-                    if ($idA === $latestShopTypeId && $idB !== $latestShopTypeId) {
-                        return -1; // Aを前に
+                $hasRecordA = in_array($idA, $userShopTypeIds);
+                $hasRecordB = in_array($idB, $userShopTypeIds);
+                
+                // レビューを書いたことがある種類を優先
+                if ($hasRecordA && !$hasRecordB) {
+                    return -1; // Aを前に
+                }
+                if (!$hasRecordA && $hasRecordB) {
+                    return 1; // Bを前に
+                }
+                
+                // 両方ともレビューを書いたことがある場合
+                if ($hasRecordA && $hasRecordB) {
+                    // 最新の記録のお店の種類を最初に
+                    if ($latestShopTypeId) {
+                        if ($idA === $latestShopTypeId && $idB !== $latestShopTypeId) {
+                            return -1; // Aを前に
+                        }
+                        if ($idA !== $latestShopTypeId && $idB === $latestShopTypeId) {
+                            return 1; // Bを前に
+                        }
                     }
-                    if ($idA !== $latestShopTypeId && $idB === $latestShopTypeId) {
-                        return 1; // Bを前に
+                    
+                    // 合計数の降順で並べる
+                    $countA = $shopTypeCounts[$idA] ?? 0;
+                    $countB = $shopTypeCounts[$idB] ?? 0;
+                    
+                    if ($countA !== $countB) {
+                        return $countB - $countA; // 降順
                     }
                 }
                 
-                // 両方とも最新の種類でない場合、合計数の降順で並べる
-                $countA = $shopTypeCounts[$idA] ?? 0;
-                $countB = $shopTypeCounts[$idB] ?? 0;
-                
-                if ($countA !== $countB) {
-                    return $countB - $countA; // 降順
-                }
-                
-                // 合計数が同じ場合は、display_orderで並べる
+                // 合計数が同じ場合、または両方ともレビューを書いたことがない場合は、display_orderで並べる
                 return $a->display_order - $b->display_order;
             })->values();
 
