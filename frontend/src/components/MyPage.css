@@ -8,14 +8,14 @@
 }
 
 .mypage-user-section {
-  margin-bottom: 32px;
+  margin-bottom: 20px;
   padding-top: 24px;
 }
 
 .mypage-user-info {
-  padding: 24px;
+  padding: 20px;
   background-color: #161a22;
-  border-radius: 16px;
+  border-radius: 12px;
   border: 1px solid rgba(232, 106, 255, 0.15);
 }
 
@@ -41,6 +41,22 @@
   flex: 1;
 }
 
+.mypage-user-info-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mypage-provider-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #a0a0a0;
+  width: 18px;
+  height: 18px;
+}
+
 .mypage-user-name {
   font-size: 20px;
   font-weight: 600;
@@ -58,19 +74,20 @@
 }
 
 .mypage-user-email {
-  font-size: 14px;
-  color: #a0a0a0;
+  font-size: 15px;
+  color: #e8e8e8;
   letter-spacing: 0.1px;
   margin: 0;
+  font-weight: 500;
 }
 
 .mypage-menu-section {
-  margin-top: 32px;
+  margin-top: 20px;
 }
 
 .mypage-menu-list {
   background-color: #161a22;
-  border-radius: 16px;
+  border-radius: 12px;
   border: 1px solid rgba(232, 106, 255, 0.15);
   overflow: hidden;
 }
@@ -90,9 +107,33 @@
   transition: all 0.2s ease;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  text-decoration: none;
+}
+
+.mypage-menu-link {
+  text-decoration: none;
+}
+
+.mypage-menu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  color: #a0a0a0;
+  flex-shrink: 0;
+}
+
+.mypage-favicon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
 }
 
 .mypage-menu-item:last-child {
+  border-bottom: none;
+}
+
+.mypage-menu-list:has(.mypage-menu-item:only-child) .mypage-menu-item {
   border-bottom: none;
 }
 
@@ -111,6 +152,20 @@
   font-size: 24px;
   font-weight: 300;
   margin-left: 12px;
+}
+
+.mypage-version {
+  margin-top: 32px;
+  text-align: center;
+  padding: 16px 0;
+}
+
+.mypage-version-text {
+  font-size: 13px;
+  color: #5a5a5a;
+  margin: 0;
+  letter-spacing: 0.1px;
+  opacity: 0.6;
 }
 
 /* タブレット以上 */
@@ -157,6 +212,15 @@
 
   .mypage-menu-item:hover {
     background-color: rgba(232, 106, 255, 0.1);
+  }
+
+
+  .mypage-version {
+    margin-top: 40px;
+  }
+
+  .mypage-version-text {
+    font-size: 14px;
   }
 }
 

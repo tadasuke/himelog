@@ -221,16 +221,8 @@ class XAuthService implements AuthServiceInterface
             // usernameをnameとして使用（nameがない場合）
             $displayName = $userName ?: $userUsername;
 
-            $userData = [
-                'user_id' => $dbUser->id,
-                'provider_user_id' => $providerUserId,
-                'email' => $userEmail,
-                'name' => $displayName,
-                'username' => $userUsername,
-                'avatar' => $userPicture,
-            ];
-
             // 6. データベースに保存または更新（共通 users テーブル）
+            // 修正: $userDataを作成する前に、updateOrCreateを実行して$dbUserを取得
             try {
                 $dbUser = User::updateOrCreate(
                     [
@@ -260,7 +252,19 @@ class XAuthService implements AuthServiceInterface
                     'provider_user_id' => $providerUserId,
                     'error' => $e->getMessage()
                 ]);
+                // DB保存に失敗した場合は、nullを返す
+                return null;
             }
+
+            // 修正: $dbUserが取得できた後に$userDataを作成
+            $userData = [
+                'user_id' => $dbUser->id,
+                'provider_user_id' => $providerUserId,
+                'email' => $userEmail,
+                'name' => $displayName,
+                'username' => $userUsername,
+                'avatar' => $userPicture,
+            ];
 
             // 7. トークンベースとユーザーIDベースの両方でキャッシュに保存
             Cache::put($tokenCacheKey, $userData, self::CACHE_TTL);
