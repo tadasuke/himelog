@@ -8,6 +8,7 @@ use App\Models\ShopType;
 use App\Models\Girl;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\QueryException;
 use App\Services\S3Service;
 use MatthiasMullie\Minify\HTML;
 
@@ -47,30 +48,100 @@ class RecordService
             // レビュー投稿時にお店・ヒメのデータを作成（または取得）する
             $shop = null;
             if (!empty($data['shop_name']) && $shopTypeId !== null) {
-                $shop = Shop::firstOrCreate(
-                    [
-                        'internal_user_id' => $userId,
-                        'shop_type_id' => $shopTypeId,
-                        'shop_name' => $data['shop_name'],
-                    ],
-                    [
-                        'memo' => null,
-                    ]
-                );
+                // 競合状態を避けるため、まず検索してから作成を試みる
+                $shop = Shop::where('internal_user_id', $userId)
+                    ->where('shop_type_id', $shopTypeId)
+                    ->where('shop_name', $data['shop_name'])
+                    ->first();
+                
+                if (!$shop) {
+                    try {
+                        $shop = Shop::create([
+                            'internal_user_id' => $userId,
+                            'shop_type_id' => $shopTypeId,
+                            'shop_name' => $data['shop_name'],
+                            'memo' => null,
+                        ]);
+                    } catch (QueryException $e) {
+                        // 一意制約違反の場合、再検索する（別のプロセスが既に作成した可能性）
+                        // SQLSTATE[23000] は一意制約違反のエラーコード
+                        if ($e->getCode() === '23000' || strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                            $shop = Shop::where('internal_user_id', $userId)
+                                ->where('shop_type_id', $shopTypeId)
+                                ->where('shop_name', $data['shop_name'])
+                                ->first();
+                            
+                            if (!$shop) {
+                                // それでも見つからない場合は元の例外を再スロー
+                                Log::warning('Shop not found after duplicate entry error', [
+                                    'user_id' => $userId,
+                                    'shop_type_id' => $shopTypeId,
+                                    'shop_name' => $data['shop_name'],
+                                    'error' => $e->getMessage(),
+                                ]);
+                                throw $e;
+                            }
+                            
+                            Log::info('Shop found after duplicate entry error (race condition handled)', [
+                                'shop_id' => $shop->id,
+                                'user_id' => $userId,
+                                'shop_type_id' => $shopTypeId,
+                                'shop_name' => $data['shop_name'],
+                            ]);
+                        } else {
+                            throw $e;
+                        }
+                    }
+                }
             }
 
             $girl = null;
             if (!empty($data['girl_name'])) {
-                $girl = Girl::firstOrCreate(
-                    [
-                        'internal_user_id' => $userId,
-                        'shop_id' => $shop ? $shop->id : null,
-                        'girl_name' => $data['girl_name'],
-                    ],
-                    [
-                        'memo' => null,
-                    ]
-                );
+                // 競合状態を避けるため、まず検索してから作成を試みる
+                $girl = Girl::where('internal_user_id', $userId)
+                    ->where('shop_id', $shop ? $shop->id : null)
+                    ->where('girl_name', $data['girl_name'])
+                    ->first();
+                
+                if (!$girl) {
+                    try {
+                        $girl = Girl::create([
+                            'internal_user_id' => $userId,
+                            'shop_id' => $shop ? $shop->id : null,
+                            'girl_name' => $data['girl_name'],
+                            'memo' => null,
+                        ]);
+                    } catch (QueryException $e) {
+                        // 一意制約違反の場合、再検索する（別のプロセスが既に作成した可能性）
+                        // SQLSTATE[23000] は一意制約違反のエラーコード
+                        if ($e->getCode() === '23000' || strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                            $girl = Girl::where('internal_user_id', $userId)
+                                ->where('shop_id', $shop ? $shop->id : null)
+                                ->where('girl_name', $data['girl_name'])
+                                ->first();
+                            
+                            if (!$girl) {
+                                // それでも見つからない場合は元の例外を再スロー
+                                Log::warning('Girl not found after duplicate entry error', [
+                                    'user_id' => $userId,
+                                    'shop_id' => $shop ? $shop->id : null,
+                                    'girl_name' => $data['girl_name'],
+                                    'error' => $e->getMessage(),
+                                ]);
+                                throw $e;
+                            }
+                            
+                            Log::info('Girl found after duplicate entry error (race condition handled)', [
+                                'girl_id' => $girl->id,
+                                'user_id' => $userId,
+                                'shop_id' => $shop ? $shop->id : null,
+                                'girl_name' => $data['girl_name'],
+                            ]);
+                        } else {
+                            throw $e;
+                        }
+                    }
+                }
             }
 
             $record = Record::create([
