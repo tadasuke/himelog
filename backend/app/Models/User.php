@@ -61,7 +61,8 @@ class User extends Model
     public function toAuthArray(): array
     {
         return [
-            'user_id' => $this->provider_user_id,
+            'user_id' => $this->id, // 修正: provider_user_idではなく、usersテーブルの内部IDを使用
+            'provider_user_id' => $this->provider_user_id, // provider_user_idも含める
             'email' => $this->email,
             'name' => $this->name,
             'username' => $this->username,
