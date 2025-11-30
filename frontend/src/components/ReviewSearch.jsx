@@ -30,7 +30,10 @@ function ReviewSearch({ user, onShopClick, onGirlClick }) {
     record: null,
     includeShopName: false,
     includeGirlName: false,
-    publicReview: ''
+    includeCourse: false,
+    includePrice: false,
+    publicReview: '',
+    metDate: ''
   })
   const [unpublishingRecord, setUnpublishingRecord] = useState(null)
 
@@ -253,11 +256,16 @@ function ReviewSearch({ user, onShopClick, onGirlClick }) {
   }
 
   const handlePublishClick = (record) => {
+    // 出会った日の初期値はレビュー登録日（created_at）をYYYY年M月形式で設定
+    const initialMetDate = formatDateForMetDate(record.created_at || new Date().toISOString())
     setPublishOptions({
       record: record,
       includeShopName: false,
       includeGirlName: false,
-      publicReview: record.review || ''
+      includeCourse: false,
+      includePrice: false,
+      publicReview: record.review || '',
+      metDate: initialMetDate
     })
   }
 
@@ -266,7 +274,10 @@ function ReviewSearch({ user, onShopClick, onGirlClick }) {
       record: null,
       includeShopName: false,
       includeGirlName: false,
-      publicReview: ''
+      includeCourse: false,
+      includePrice: false,
+      publicReview: '',
+      metDate: ''
     })
   }
 
@@ -291,7 +302,10 @@ function ReviewSearch({ user, onShopClick, onGirlClick }) {
         body: JSON.stringify({
           include_shop_name: publishOptions.includeShopName,
           include_girl_name: publishOptions.includeGirlName,
-          public_review: publishOptions.publicReview
+          include_course: publishOptions.includeCourse,
+          include_price: publishOptions.includePrice,
+          public_review: publishOptions.publicReview,
+          met_date: publishOptions.metDate
         }),
       })
 
@@ -326,7 +340,10 @@ function ReviewSearch({ user, onShopClick, onGirlClick }) {
         record: null,
         includeShopName: false,
         includeGirlName: false,
-        publicReview: ''
+        includeCourse: false,
+        includePrice: false,
+        publicReview: '',
+        metDate: ''
       })
     } catch (error) {
       console.error('Publish record error:', error)
@@ -457,6 +474,15 @@ function ReviewSearch({ user, onShopClick, onGirlClick }) {
     const month = date.getMonth() + 1
     const day = date.getDate()
     return `${year}年${month}月${day}日`
+  }
+
+  // 日付をYYYY年M月の形式に変換（出会った日用）
+  const formatDateForMetDate = (dateString) => {
+    if (!dateString) return ''
+    const date = new Date(dateString)
+    const year = date.getFullYear()
+    const month = date.getMonth() + 1
+    return `${year}年${month}月`
   }
 
   // レビューのプレビューテキスト取得
@@ -1012,7 +1038,7 @@ function ReviewSearch({ user, onShopClick, onGirlClick }) {
                 display: 'flex', 
                 alignItems: 'center', 
                 gap: '8px',
-                marginBottom: '16px',
+                marginBottom: '12px',
                 cursor: 'pointer',
                 color: '#e0e0e0'
               }}>
@@ -1027,6 +1053,78 @@ function ReviewSearch({ user, onShopClick, onGirlClick }) {
                 />
                 <span>ヒメの名前を含める</span>
               </label>
+              {publishOptions.record?.course && (
+                <label style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px',
+                  marginBottom: '12px',
+                  cursor: 'pointer',
+                  color: '#e0e0e0'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={publishOptions.includeCourse}
+                    onChange={(e) => setPublishOptions(prev => ({
+                      ...prev,
+                      includeCourse: e.target.checked
+                    }))}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <span>コースを含める</span>
+                </label>
+              )}
+              {publishOptions.record?.price && (
+                <label style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px',
+                  marginBottom: '16px',
+                  cursor: 'pointer',
+                  color: '#e0e0e0'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={publishOptions.includePrice}
+                    onChange={(e) => setPublishOptions(prev => ({
+                      ...prev,
+                      includePrice: e.target.checked
+                    }))}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <span>料金を含める</span>
+                </label>
+              )}
+              <div style={{ marginTop: '16px', marginBottom: '16px' }}>
+                <label style={{ 
+                  display: 'block',
+                  marginBottom: '8px',
+                  color: '#e0e0e0',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}>
+                  出会った日
+                </label>
+                <input
+                  type="text"
+                  value={publishOptions.metDate}
+                  onChange={(e) => setPublishOptions(prev => ({
+                    ...prev,
+                    metDate: e.target.value
+                  }))}
+                  placeholder="例: 2025年1月"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    background: 'rgba(0, 0, 0, 0.3)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    borderRadius: '8px',
+                    color: '#e0e0e0',
+                    fontSize: '14px',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
               <div style={{ marginTop: '16px' }}>
                 <label style={{ 
                   display: 'block',

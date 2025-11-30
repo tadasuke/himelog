@@ -744,12 +744,15 @@ class RecordService
      * @param bool $includeShopName お店の名前を含めるか
      * @param bool $includeGirlName ヒメの名前を含めるか
      * @param string $publicReview 公開用の感想（DBには保存しない）
+     * @param bool $includeCourse コースを含めるか
+     * @param bool $includePrice 料金を含めるか
+     * @param string $metDate 出会った日（テキスト、DBには保存しない）
      * @return string 公開URL
      */
-    public function publishRecord(Record $record, string $userId, bool $includeShopName = true, bool $includeGirlName = true, string $publicReview = ''): string
+    public function publishRecord(Record $record, string $userId, bool $includeShopName = true, bool $includeGirlName = true, string $publicReview = '', bool $includeCourse = false, bool $includePrice = false, string $metDate = ''): string
     {
         // DB更新部分のみトランザクションで保護し、S3アップロードは外側で実行
-        return DB::transaction(function () use ($record, $userId, $includeShopName, $includeGirlName, $publicReview): string {
+        return DB::transaction(function () use ($record, $userId, $includeShopName, $includeGirlName, $publicReview, $includeCourse, $includePrice, $metDate): string {
             // 所有者チェック
             if ($record->internal_user_id !== $userId) {
                 Log::warning('Unauthorized record publish attempt', [
@@ -766,7 +769,7 @@ class RecordService
             }
 
             // HTMLを生成
-            $html = $this->generatePublicHtml($record, $includeShopName, $includeGirlName, $publicReview);
+            $html = $this->generatePublicHtml($record, $includeShopName, $includeGirlName, $publicReview, $includeCourse, $includePrice, $metDate);
 
             // S3にアップロード（外部サービスだが、ここで失敗した場合は例外でロールバックされる）
             $s3Service = new S3Service();
@@ -831,8 +834,11 @@ class RecordService
      * @param bool $includeShopName お店の名前を含めるか
      * @param bool $includeGirlName ヒメの名前を含めるか
      * @param string $publicReview 公開用の感想
+     * @param bool $includeCourse コースを含めるか
+     * @param bool $includePrice 料金を含めるか
+     * @param string $metDate 出会った日（テキスト）
      */
-    private function generatePublicHtml(Record $record, bool $includeShopName = true, bool $includeGirlName = true, string $publicReview = ''): string
+    private function generatePublicHtml(Record $record, bool $includeShopName = true, bool $includeGirlName = true, string $publicReview = '', bool $includeCourse = false, bool $includePrice = false, string $metDate = ''): string
     {
         $record->load(['shop', 'shop.shopType', 'girl']);
         // Recordモデルのアクセサからお店の種類名を取得
@@ -893,10 +899,7 @@ class RecordService
             : '内緒';
         
         // h1タグ用のタイトル（リンク付き）
-        $footerLinkUrl = config('app.public_review_footer_link_url');
-        if (!$footerLinkUrl) {
-            throw new \Exception('PUBLIC_REVIEW_FOOTER_LINK_URL環境変数が設定されていません');
-        }
+        $footerLinkUrl = 'https://hime-log.jp';
         $h1Title = '<a href="' . htmlspecialchars($footerLinkUrl, ENT_QUOTES, 'UTF-8') . '">ヒメログ</a>';
 
         // 星評価のHTMLを生成（1-10段階評価に対応）
@@ -1089,16 +1092,30 @@ HTML;
 HTML;
         }
 
-        if ($record->course) {
+        // 出会った日を表示
+        if ($metDate) {
+            $metDateEscaped = htmlspecialchars($metDate, ENT_QUOTES, 'UTF-8');
             $html .= <<<HTML
             <div class="info-item">
-                <div class="info-label">コース</div>
-                <div class="info-value">{$record->course}</div>
+                <div class="info-label">出会った日</div>
+                <div class="info-value">{$metDateEscaped}</div>
             </div>
 HTML;
         }
 
-        if ($record->price) {
+        // コースを表示（includeCourseがtrueかつコースが存在する場合）
+        if ($includeCourse && $record->course) {
+            $courseEscaped = htmlspecialchars($record->course, ENT_QUOTES, 'UTF-8');
+            $html .= <<<HTML
+            <div class="info-item">
+                <div class="info-label">コース</div>
+                <div class="info-value">{$courseEscaped}</div>
+            </div>
+HTML;
+        }
+
+        // 料金を表示（includePriceがtrueかつ料金が存在する場合）
+        if ($includePrice && $record->price) {
             $price = number_format($record->price);
             $html .= <<<HTML
             <div class="info-item">
