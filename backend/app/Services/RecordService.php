@@ -921,7 +921,8 @@ class RecordService
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="https://hime-log.jp/favicon.svg" type="image/svg+xml">
+    <link rel="icon" type="image/svg+xml" href="https://hime-log.jp/favicon.svg">
+    <link rel="alternate icon" href="https://hime-log.jp/favicon.png">
     <title>{$title}</title>
     <meta name="description" content="{$description}">
     
