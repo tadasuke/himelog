@@ -22,6 +22,8 @@ class ShopTypeController extends Controller
         try {
             // 認証されたユーザーIDを取得（オプション）
             $userId = $request->input('authenticated_user_id');
+            // レビューを登録したことがあるお店の種類だけを返すかどうか
+            $onlyReviewed = $request->input('only_reviewed', false);
             
             // 全てのお店の種類を取得
             $allShopTypes = ShopType::orderBy('display_order', 'asc')
@@ -48,6 +50,20 @@ class ShopTypeController extends Controller
                 ->unique()
                 ->values()
                 ->toArray();
+
+            // only_reviewedがtrueの場合、レビューを登録したことがあるお店の種類だけを返す
+            if ($onlyReviewed) {
+                $reviewedShopTypes = $allShopTypes->filter(function ($shopType) use ($userShopTypeIds) {
+                    return in_array($shopType->id, $userShopTypeIds);
+                })->values();
+
+                $result = response()->json([
+                    'success' => true,
+                    'shop_types' => $reviewedShopTypes
+                ]);
+                $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+                return $result;
+            }
 
             // ユーザーの最新の記録のお店の種類を取得
             $latestRecord = Record::where('internal_user_id', $userId)

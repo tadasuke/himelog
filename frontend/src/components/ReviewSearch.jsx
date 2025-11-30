@@ -47,7 +47,8 @@ function ReviewSearch({ user, onShopClick, onGirlClick }) {
 
       setIsLoadingShopTypes(true)
       try {
-        const response = await fetchWithAuth(getApiUrl('/api/shop-types'), { method: 'GET' })
+        // レビューを登録したことがあるお店の種類だけを取得
+        const response = await fetchWithAuth(getApiUrl('/api/shop-types?only_reviewed=true'), { method: 'GET' })
         
         if (response.status === 401) {
           handleAuthError(response)
@@ -766,42 +767,6 @@ function ReviewSearch({ user, onShopClick, onGirlClick }) {
                         <button 
                           onClick={(e) => {
                             e.stopPropagation()
-                            navigator.clipboard.writeText(recordPublicUrls[record.id])
-                            alert('URLをクリップボードにコピーしました')
-                          }}
-                          style={{ 
-                            flexShrink: 0,
-                            padding: '8px 16px',
-                            background: 'rgba(111, 140, 255, 0.1)',
-                            border: '1px solid rgba(111, 140, 255, 0.4)',
-                            borderRadius: '6px',
-                            color: '#6f8cff',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all 0.3s ease',
-                            WebkitTapHighlightColor: 'transparent',
-                            fontSize: '13px',
-                            fontWeight: '500',
-                            whiteSpace: 'nowrap'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(111, 140, 255, 0.2)'
-                            e.currentTarget.style.borderColor = 'rgba(111, 140, 255, 0.6)'
-                            e.currentTarget.style.transform = 'scale(1.02)'
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(111, 140, 255, 0.1)'
-                            e.currentTarget.style.borderColor = 'rgba(111, 140, 255, 0.4)'
-                            e.currentTarget.style.transform = 'scale(1)'
-                          }}
-                        >
-                          コピー
-                        </button>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation()
                             handlePublishClick(record)
                           }}
                           style={{ 
@@ -832,7 +797,7 @@ function ReviewSearch({ user, onShopClick, onGirlClick }) {
                             e.currentTarget.style.transform = 'scale(1)'
                           }}
                         >
-                          修正
+                          再レビュー
                         </button>
                         <button 
                           onClick={(e) => {
@@ -878,39 +843,37 @@ function ReviewSearch({ user, onShopClick, onGirlClick }) {
                   )}
                   <div className="log-card-footer">
                     {isExpanded && (
-                      <>
-                        <button 
-                          className="log-card-btn log-card-btn-delete" 
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDeleteClick(record)
-                          }}
-                          title="削除"
-                        >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M3 6H5H21M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M10 11V17M14 11V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                        {!record.public_token && (
-                          <button 
-                            className="log-card-btn" 
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handlePublishClick(record)
-                            }}
-                            disabled={publishingRecord === record.id}
-                            title="公開する"
-                            style={{ 
-                              opacity: publishingRecord === record.id ? 0.5 : 1
-                            }}
-                          >
-                            {publishingRecord === record.id ? '公開中...' : '公開する'}
-                          </button>
-                        )}
-                      </>
+                      <button 
+                        className="log-card-btn log-card-btn-delete" 
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteClick(record)
+                        }}
+                        title="削除"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M3 6H5H21M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M10 11V17M14 11V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
                     )}
                     <div className="log-card-footer-right">
+                      {isExpanded && !record.public_token && (
+                        <button 
+                          className="log-card-btn" 
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handlePublishClick(record)
+                          }}
+                          disabled={publishingRecord === record.id}
+                          title="公開する"
+                          style={{ 
+                            opacity: publishingRecord === record.id ? 0.5 : 1
+                          }}
+                        >
+                          {publishingRecord === record.id ? '公開中...' : '公開する'}
+                        </button>
+                      )}
                       {isExpanded && (
                         <button 
                           className="log-card-btn log-card-btn-edit" 
@@ -918,11 +881,9 @@ function ReviewSearch({ user, onShopClick, onGirlClick }) {
                             e.stopPropagation()
                             handleEditRecord(record)
                           }}
-                          title="編集"
+                          title="修正する"
                         >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M17 3C17.2652 3 17.5196 3.10536 17.7071 3.29289L20.7071 6.29289C20.8946 6.48043 21 6.73478 21 7C21 7.26522 20.8946 7.51957 20.7071 7.70711L8.70711 19.7071C8.51957 19.8946 8.26522 20 8 20H3C2.44772 20 2 19.5523 2 19V14C2 13.7348 2.10536 13.4804 2.29289 13.2929L14.2929 1.29289C14.4804 1.10536 14.7348 1 15 1H17V3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
+                          修正する
                         </button>
                       )}
                       {isExpanded && (

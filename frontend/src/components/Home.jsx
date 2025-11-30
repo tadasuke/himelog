@@ -3,8 +3,6 @@ import PropTypes from 'prop-types'
 import './Home.css'
 import RecordForm from './RecordForm'
 import StarRating from './StarRating'
-import OverallRatingChart from './OverallRatingChart'
-import OverallRatingPieChart from './OverallRatingPieChart'
 // import ShopTypeChart from './ShopTypeChart' // 将来使用する可能性があるためコメントアウト
 import { getApiUrl, fetchWithAuth, getAuthToken, handleAuthError } from '../utils/api'
 
@@ -381,6 +379,13 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
     })
   }
 
+  // 統計情報を計算
+  const reviewCount = records.length
+  const recordsWithRating = records.filter(r => r.overall_rating != null && r.overall_rating > 0)
+  const averageOverallRating = recordsWithRating.length > 0
+    ? recordsWithRating.reduce((sum, r) => sum + (r.overall_rating || 0), 0) / recordsWithRating.length
+    : 0
+
   return (
     <div className="home-container">
       {user && (currentPage === 'create' || editingRecord) && (
@@ -563,6 +568,32 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
               レビューを公開しました。
             </p>
             <div style={{ 
+              marginBottom: '24px',
+              padding: '12px',
+              background: 'rgba(74, 144, 226, 0.05)',
+              borderRadius: '8px',
+              border: '1px solid rgba(74, 144, 226, 0.2)',
+              fontSize: '13px',
+              lineHeight: '1.6',
+              color: '#e0e0e0'
+            }}>
+              <ul style={{ 
+                margin: '0',
+                paddingLeft: '20px',
+                listStyleType: 'disc'
+              }}>
+                <li style={{ marginBottom: '8px' }}>
+                  公開されたレビューは世界中から閲覧可能です。
+                </li>
+                <li style={{ marginBottom: '8px' }}>
+                  多くの方にお見せしたい場合はX(旧Twitter)などへの投稿をおすすめします。
+                </li>
+                <li style={{ marginBottom: '0' }}>
+                  レビューはいつでも修正、削除が可能です。
+                </li>
+              </ul>
+            </div>
+            <div style={{ 
               display: 'flex', 
               gap: '8px', 
               justifyContent: 'center',
@@ -621,16 +652,29 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
 
       {currentPage === 'home' && !editingRecord && (
       <div className="logs-section">
+        {!isLoading && (
+          <div className="stats-section">
+            <div className="stat-card">
+              <div className="stat-label">出会いの数</div>
+              <div className="stat-value">{reviewCount}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">平均総合評価</div>
+              <div className="stat-value-rating">
+                {averageOverallRating > 0 ? (
+                  <>
+                    <span className="stat-rating-number">{averageOverallRating.toFixed(1)}</span>
+                    <StarRating rating={Math.round(averageOverallRating * 2) / 2} readonly={true} />
+                  </>
+                ) : (
+                  <span className="stat-no-data">データなし</span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         {!isLoading && records.length > 0 && (
           <>
-            <div className="chart-section">
-              <h2 className="chart-section-title">総合評価の推移</h2>
-              <OverallRatingChart user={user} />
-            </div>
-            <div className="chart-section">
-              <h2 className="chart-section-title">総合評価の割合</h2>
-              <OverallRatingPieChart user={user} />
-            </div>
             {/* 利用したお店のタイプの円グラフは将来使用する可能性があるためコメントアウト */}
             {/* <div className="chart-section">
               <h2 className="chart-section-title">利用したお店のタイプ</h2>
@@ -857,42 +901,6 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
                         <button 
                           onClick={(e) => {
                             e.stopPropagation()
-                            navigator.clipboard.writeText(recordPublicUrls[record.id])
-                            alert('URLをクリップボードにコピーしました')
-                          }}
-                          style={{ 
-                            flexShrink: 0,
-                            padding: '8px 16px',
-                            background: 'rgba(111, 140, 255, 0.1)',
-                            border: '1px solid rgba(111, 140, 255, 0.4)',
-                            borderRadius: '6px',
-                            color: '#6f8cff',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all 0.3s ease',
-                            WebkitTapHighlightColor: 'transparent',
-                            fontSize: '13px',
-                            fontWeight: '500',
-                            whiteSpace: 'nowrap'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(111, 140, 255, 0.2)'
-                            e.currentTarget.style.borderColor = 'rgba(111, 140, 255, 0.6)'
-                            e.currentTarget.style.transform = 'scale(1.02)'
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(111, 140, 255, 0.1)'
-                            e.currentTarget.style.borderColor = 'rgba(111, 140, 255, 0.4)'
-                            e.currentTarget.style.transform = 'scale(1)'
-                          }}
-                        >
-                          コピー
-                        </button>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation()
                             handlePublishClick(record)
                           }}
                           style={{ 
@@ -923,7 +931,7 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
                             e.currentTarget.style.transform = 'scale(1)'
                           }}
                         >
-                          修正
+                          再レビュー
                         </button>
                         <button 
                           onClick={(e) => {
@@ -969,39 +977,37 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
                   )}
                   <div className="log-card-footer">
                     {isExpanded && (
-                      <>
-                        <button 
-                          className="log-card-btn log-card-btn-delete" 
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDeleteClick(record)
-                          }}
-                          title="削除"
-                        >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M3 6H5H21M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M10 11V17M14 11V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                        {!record.public_token && (
-                          <button 
-                            className="log-card-btn" 
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handlePublishClick(record)
-                            }}
-                            disabled={publishingRecord === record.id}
-                            title="公開する"
-                            style={{ 
-                              opacity: publishingRecord === record.id ? 0.5 : 1
-                            }}
-                          >
-                            {publishingRecord === record.id ? '公開中...' : '公開する'}
-                          </button>
-                        )}
-                      </>
+                      <button 
+                        className="log-card-btn log-card-btn-delete" 
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteClick(record)
+                        }}
+                        title="削除"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M3 6H5H21M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M10 11V17M14 11V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
                     )}
                     <div className="log-card-footer-right">
+                      {isExpanded && !record.public_token && (
+                        <button 
+                          className="log-card-btn" 
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handlePublishClick(record)
+                          }}
+                          disabled={publishingRecord === record.id}
+                          title="公開する"
+                          style={{ 
+                            opacity: publishingRecord === record.id ? 0.5 : 1
+                          }}
+                        >
+                          {publishingRecord === record.id ? '公開中...' : '公開する'}
+                        </button>
+                      )}
                       {isExpanded && (
                         <button 
                           className="log-card-btn log-card-btn-edit" 
@@ -1009,11 +1015,9 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
                             e.stopPropagation()
                             handleEditRecord(record)
                           }}
-                          title="編集"
+                          title="修正する"
                         >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M17 3C17.2652 3 17.5196 3.10536 17.7071 3.29289L20.7071 6.29289C20.8946 6.48043 21 6.73478 21 7C21 7.26522 20.8946 7.51957 20.7071 7.70711L8.70711 19.7071C8.51957 19.8946 8.26522 20 8 20H3C2.44772 20 2 19.5523 2 19V14C2 13.7348 2.10536 13.4804 2.29289 13.2929L14.2929 1.29289C14.4804 1.10536 14.7348 1 15 1H17V3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
+                          修正する
                         </button>
                       )}
                       {isExpanded && (
