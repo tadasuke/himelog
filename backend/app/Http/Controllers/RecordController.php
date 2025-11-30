@@ -624,7 +624,10 @@ class RecordController extends Controller
             // 公開オプションを取得（デフォルトはtrue）
             $includeShopName = filter_var($request->input('include_shop_name', true), FILTER_VALIDATE_BOOLEAN);
             $includeGirlName = filter_var($request->input('include_girl_name', true), FILTER_VALIDATE_BOOLEAN);
+            $includeCourse = filter_var($request->input('include_course', false), FILTER_VALIDATE_BOOLEAN);
+            $includePrice = filter_var($request->input('include_price', false), FILTER_VALIDATE_BOOLEAN);
             $publicReview = $request->input('public_review', '') ?? '';
+            $metDate = $request->input('met_date', '') ?? '';
 
             try {
                 $publicUrl = $this->recordService->publishRecord(
@@ -632,7 +635,10 @@ class RecordController extends Controller
                     $authenticatedUserId,
                     $includeShopName,
                     $includeGirlName,
-                    $publicReview
+                    $publicReview,
+                    $includeCourse,
+                    $includePrice,
+                    $metDate
                 );
             } catch (\Exception $e) {
                 if ($e->getMessage() === 'この記録を公開する権限がありません') {
