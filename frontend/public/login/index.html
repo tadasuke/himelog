@@ -267,6 +267,8 @@
                 </svg>
                 <span>Googleでログイン</span>
             </button>
+            <!-- Xログインボタンは一旦非表示 -->
+            <!--
             <div class="login-divider">
                 <span class="divider-text">または</span>
             </div>
@@ -276,6 +278,7 @@
                 </svg>
                 <span>Xでログイン</span>
             </button>
+            -->
         </div>
     </div>
 
@@ -588,7 +591,8 @@
             console.log('window.X_CLIENT_ID:', window.X_CLIENT_ID ? 'set' : 'not set');
             
             initGoogleAuth();
-            initXAuth();
+            // Xログインボタンは一旦非表示のため、初期化をスキップ
+            // initXAuth();
         });
         
         // 念のため、window.onloadでも初期化（config.jsが遅延読み込みされる場合に備える）
