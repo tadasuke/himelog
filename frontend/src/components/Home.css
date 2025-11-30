@@ -117,6 +117,57 @@
   margin-top: 32px;
 }
 
+.stats-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  background-color: #161a22;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid rgba(232, 106, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #a0a0a0;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 600;
+  color: #e8e8e8;
+  letter-spacing: 0.2px;
+}
+
+.stat-value-rating {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.stat-rating-number {
+  font-size: 32px;
+  font-weight: 600;
+  color: #e8e8e8;
+  letter-spacing: 0.2px;
+}
+
+.stat-no-data {
+  font-size: 16px;
+  color: #a0a0a0;
+  font-weight: 400;
+}
+
 .chart-section {
   margin-bottom: 32px;
 }
@@ -654,6 +705,32 @@
 
   .logs-section {
     margin-top: 60px;
+  }
+
+  .stats-section {
+    gap: 24px;
+    margin-bottom: 40px;
+  }
+
+  .stat-card {
+    padding: 24px;
+    border-radius: 16px;
+  }
+
+  .stat-label {
+    font-size: 15px;
+  }
+
+  .stat-value {
+    font-size: 40px;
+  }
+
+  .stat-rating-number {
+    font-size: 40px;
+  }
+
+  .stat-no-data {
+    font-size: 18px;
   }
 
   .logs-section-title {
