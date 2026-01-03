@@ -76,6 +76,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState('home')
   const [selectedShop, setSelectedShop] = useState(null)
   const [selectedGirl, setSelectedGirl] = useState(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   // ページロード時にローカルストレージからログイン状態を復元
   useEffect(() => {
@@ -647,17 +648,24 @@ function App() {
               shopType={selectedShop.shopType}
               shopName={selectedShop.shopName}
               onGirlClick={handleGirlClick}
+              onModalStateChange={setIsModalOpen}
             />
           ) : selectedGirl ? (
             <GirlDetail 
               user={user}
               girlName={selectedGirl}
               onShopClick={handleShopClick}
+              onModalStateChange={setIsModalOpen}
             />
           ) : currentPage === 'mypage' ? (
             <MyPage user={user} onLogout={handleLogout} />
           ) : currentPage === 'discover' ? (
-            <ReviewSearch user={user} onShopClick={handleShopClick} onGirlClick={handleGirlClick} />
+            <ReviewSearch 
+              user={user} 
+              onShopClick={handleShopClick} 
+              onGirlClick={handleGirlClick}
+              onModalStateChange={setIsModalOpen}
+            />
           ) : currentPage === 'records' ? (
             <RecordRanking user={user} onShopClick={handleShopClick} onGirlClick={handleGirlClick} />
           ) : (
@@ -669,13 +677,16 @@ function App() {
               onRecordsLoaded={handleRecordsLoaded}
               onShopClick={handleShopClick}
               onGirlClick={handleGirlClick}
+              onModalStateChange={setIsModalOpen}
             />
           )}
-          <BottomNavigation 
-            user={user} 
-            currentPage={currentPage} 
-            onNavigate={handleNavigate}
-          />
+          {!isModalOpen && (
+            <BottomNavigation 
+              user={user} 
+              currentPage={currentPage} 
+              onNavigate={handleNavigate}
+            />
+          )}
         </>
       )}
     </div>
