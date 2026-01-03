@@ -10,6 +10,7 @@ use App\Models\LoginHistory;
 use Illuminate\Support\Str;
 use App\Traits\LogsMethodExecution;
 use App\Services\AuthServiceManager;
+use App\Services\OAuth1Helper;
 use Illuminate\Support\Facades\Http;
 
 class AuthController extends Controller
@@ -209,126 +210,267 @@ class AuthController extends Controller
     }
 
     /**
-     * X(Twitter)認証のコールバック処理
-     * 認証コードをアクセストークンに交換
+     * X(Twitter)認証のリクエストトークン取得（OAuth 1.0a Step 1）
      */
-    public function xCallback(Request $request): JsonResponse
+    public function xRequestToken(Request $request): JsonResponse
     {
-        // 最初にログを出力（メソッドが呼び出されているか確認）
-        error_log('=== X CALLBACK METHOD CALLED ===');
-        Log::info('=== X CALLBACK METHOD CALLED ===', [
-            'timestamp' => now()->toDateTimeString(),
-            'method' => $request->method(),
-            'url' => $request->fullUrl(),
-            'ip' => $request->ip(),
-        ]);
-        
         $this->logMethodStart(__FUNCTION__, ['request' => $request], __FILE__, __LINE__);
-        Log::info('X callback: Request received', [
+        Log::info('X request token: Request received', [
             'method' => $request->method(),
             'input' => $request->all(),
         ]);
 
         try {
-            $code = $request->input('code');
-            $codeVerifier = $request->input('code_verifier');
-            $redirectUri = $request->input('redirect_uri');
+            $callbackUrl = $request->input('callback_url');
+            
+            if (!$callbackUrl) {
+                Log::error('X request token: Callback URL is missing');
+                return response()->json([
+                    'error' => 'Callback URL is required',
+                ], 400);
+            }
 
-            if (!$code || !$codeVerifier || !$redirectUri) {
-                Log::error('X callback: Missing required parameters');
+            $consumerKey = config('services.x.client_id');
+            $consumerSecret = config('services.x.client_secret');
+
+            if (!$consumerKey || !$consumerSecret) {
+                Log::error('X request token: X credentials not configured');
+                return response()->json([
+                    'error' => 'X credentials not configured',
+                ], 500);
+            }
+
+            Log::info('X request token: Credentials loaded', [
+                'consumer_key_length' => strlen($consumerKey),
+                'consumer_key_prefix' => substr($consumerKey, 0, 10) . '...',
+                'consumer_secret_length' => strlen($consumerSecret),
+                'consumer_secret_prefix' => substr($consumerSecret, 0, 10) . '...',
+                'callback_url' => $callbackUrl,
+            ]);
+
+            // OAuth 1.0aパラメータを生成
+            $oauthParams = OAuth1Helper::generateOAuthParams($consumerKey);
+            $oauthParams['oauth_callback'] = $callbackUrl;
+
+            // 署名を生成
+            $url = 'https://api.x.com/oauth/request_token';
+            
+            Log::info('X request token: OAuth params before signature', [
+                'oauth_params' => array_map(function($key, $value) {
+                    // 機密情報は一部のみ表示
+                    if (in_array($key, ['oauth_consumer_key'])) {
+                        return substr($value, 0, 10) . '...';
+                    }
+                    return $value;
+                }, array_keys($oauthParams), $oauthParams),
+            ]);
+            
+            $oauthParams['oauth_signature'] = OAuth1Helper::generateSignature(
+                'POST',
+                $url,
+                $oauthParams,
+                $consumerSecret
+            );
+
+            // Authorizationヘッダーを生成
+            $authHeader = OAuth1Helper::buildAuthorizationHeader($oauthParams);
+
+            Log::info('X request token: Generated authorization header', [
+                'auth_header_length' => strlen($authHeader),
+                'auth_header_preview' => substr($authHeader, 0, 100) . '...',
+                'signature_length' => strlen($oauthParams['oauth_signature']),
+            ]);
+
+            // リクエストトークンを取得
+            // OAuth 1.0aでは、oauth_callbackはリクエストボディにも含める必要がある
+            // 署名にはAuthorizationヘッダーに含まれるパラメータが使用される
+            $response = Http::withHeaders([
+                'Authorization' => $authHeader,
+            ])->asForm()->post($url, [
+                'oauth_callback' => $callbackUrl,
+            ]);
+
+            Log::info('X request token: Response received', [
+                'status' => $response->status(),
+                'successful' => $response->successful(),
+            ]);
+
+            if (!$response->successful()) {
+                $errorBody = $response->body();
+                $responseHeaders = $response->headers();
+                
+                Log::error('X request token: Failed to get request token', [
+                    'status' => $response->status(),
+                    'body' => $errorBody,
+                    'headers' => $responseHeaders,
+                    'request_url' => $url,
+                    'callback_url' => $callbackUrl,
+                ]);
+                
+                // エラーレスポンスの詳細を返す
+                return response()->json([
+                    'error' => 'Failed to get request token',
+                    'details' => $errorBody,
+                    'status' => $response->status(),
+                ], 401);
+            }
+
+            // レスポンスをパース（oauth_token=xxx&oauth_token_secret=yyy&oauth_callback_confirmed=true形式）
+            parse_str($response->body(), $tokenData);
+            
+            if (!isset($tokenData['oauth_token']) || !isset($tokenData['oauth_token_secret'])) {
+                Log::error('X request token: Invalid response format', ['response' => $response->body()]);
+                return response()->json([
+                    'error' => 'Invalid response from X API',
+                ], 401);
+            }
+
+            if (!isset($tokenData['oauth_callback_confirmed']) || $tokenData['oauth_callback_confirmed'] !== 'true') {
+                Log::error('X request token: Callback not confirmed', ['response' => $response->body()]);
+                return response()->json([
+                    'error' => 'Callback not confirmed',
+                ], 401);
+            }
+
+            Log::info('X request token: Success', [
+                'oauth_token' => substr($tokenData['oauth_token'], 0, 20) . '...',
+            ]);
+
+            $result = response()->json([
+                'oauth_token' => $tokenData['oauth_token'],
+                'oauth_token_secret' => $tokenData['oauth_token_secret'],
+            ]);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('X request token error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            $result = response()->json([
+                'error' => 'Failed to get request token',
+            ], 500);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        }
+    }
+
+    /**
+     * X(Twitter)認証のアクセストークン取得（OAuth 1.0a Step 3）
+     */
+    public function xAccessToken(Request $request): JsonResponse
+    {
+        $this->logMethodStart(__FUNCTION__, ['request' => $request], __FILE__, __LINE__);
+        Log::info('X access token: Request received', [
+            'method' => $request->method(),
+            'input' => $request->all(),
+        ]);
+
+        try {
+            $oauthToken = $request->input('oauth_token');
+            $oauthVerifier = $request->input('oauth_verifier');
+            $oauthTokenSecret = $request->input('oauth_token_secret');
+
+            if (!$oauthToken || !$oauthVerifier || !$oauthTokenSecret) {
+                Log::error('X access token: Missing required parameters');
                 return response()->json([
                     'error' => 'Missing required parameters',
                     'loggedIn' => false
                 ], 400);
             }
 
-            $clientId = config('services.x.client_id');
-            $clientSecret = config('services.x.client_secret');
+            $consumerKey = config('services.x.client_id');
+            $consumerSecret = config('services.x.client_secret');
 
-            if (!$clientId || !$clientSecret) {
-                Log::error('X callback: X credentials not configured');
+            if (!$consumerKey || !$consumerSecret) {
+                Log::error('X access token: X credentials not configured');
                 return response()->json([
                     'error' => 'X credentials not configured',
                     'loggedIn' => false
                 ], 500);
             }
 
-            // 認証コードをアクセストークンに交換
-            Log::info('X callback: Exchanging code for access token', [
-                'code_length' => strlen($code),
-                'code_verifier_length' => strlen($codeVerifier),
-                'redirect_uri' => $redirectUri
+            // OAuth 1.0aパラメータを生成
+            $oauthParams = OAuth1Helper::generateOAuthParams($consumerKey, $oauthToken);
+            $oauthParams['oauth_verifier'] = $oauthVerifier;
+
+            // 署名を生成
+            $url = 'https://api.x.com/oauth/access_token';
+            $oauthParams['oauth_signature'] = OAuth1Helper::generateSignature(
+                'POST',
+                $url,
+                $oauthParams,
+                $consumerSecret,
+                $oauthTokenSecret
+            );
+
+            // Authorizationヘッダーを生成
+            $authHeader = OAuth1Helper::buildAuthorizationHeader($oauthParams);
+
+            Log::info('X access token: Sending request to X API');
+
+            // アクセストークンを取得
+            $response = Http::withHeaders([
+                'Authorization' => $authHeader,
+            ])->post($url, [
+                'oauth_verifier' => $oauthVerifier,
             ]);
 
-            $response = Http::withBasicAuth($clientId, $clientSecret)
-                ->asForm()
-                ->post('https://api.x.com/2/oauth2/token', [
-                    'code' => $code,
-                    'grant_type' => 'authorization_code',
-                    'client_id' => $clientId,
-                    'redirect_uri' => $redirectUri,
-                    'code_verifier' => $codeVerifier,
-                ]);
-
-            Log::info('X callback: Token exchange response', [
+            Log::info('X access token: Response received', [
                 'status' => $response->status(),
                 'successful' => $response->successful(),
-                'body_preview' => substr($response->body(), 0, 200)
             ]);
 
             if (!$response->successful()) {
                 $errorBody = $response->body();
-                $errorJson = $response->json();
-                Log::error('X callback: Token exchange failed', [
+                Log::error('X access token: Failed to get access token', [
                     'status' => $response->status(),
                     'body' => $errorBody,
-                    'json' => $errorJson
                 ]);
                 return response()->json([
-                    'error' => 'Token exchange failed',
+                    'error' => 'Failed to get access token',
                     'loggedIn' => false
                 ], 401);
             }
 
-            $tokenData = $response->json();
-            $accessToken = $tokenData['access_token'] ?? null;
-
-            Log::info('X callback: Token data received', [
-                'has_access_token' => !is_null($accessToken),
-                'token_data_keys' => array_keys($tokenData)
-            ]);
-
-            if (!$accessToken) {
-                Log::error('X callback: Access token not found in response', ['response' => $tokenData]);
+            // レスポンスをパース（oauth_token=xxx&oauth_token_secret=yyy形式）
+            parse_str($response->body(), $tokenData);
+            
+            if (!isset($tokenData['oauth_token']) || !isset($tokenData['oauth_token_secret'])) {
+                Log::error('X access token: Invalid response format', ['response' => $response->body()]);
                 return response()->json([
-                    'error' => 'Access token not found',
+                    'error' => 'Invalid response from X API',
                     'loggedIn' => false
                 ], 401);
             }
+
+            $accessToken = $tokenData['oauth_token'];
+            $accessTokenSecret = $tokenData['oauth_token_secret'];
+
+            Log::info('X access token: Success', [
+                'access_token_prefix' => substr($accessToken, 0, 20) . '...',
+            ]);
 
             // アクセストークンを使用してユーザー情報を取得
-            Log::info('X callback: Verifying user with access token', [
-                'access_token_length' => strlen($accessToken),
-                'access_token_prefix' => substr($accessToken, 0, 20) . '...'
-            ]);
-
             $authServiceManager = app(AuthServiceManager::class);
             
+            // トークンとトークンシークレットをJSON文字列に変換
+            $tokenJson = json_encode([
+                'access_token' => $accessToken,
+                'access_token_secret' => $accessTokenSecret,
+            ]);
+            
             try {
-                $user = $authServiceManager->verifyToken($accessToken, 'x');
+                $user = $authServiceManager->verifyToken($tokenJson, 'x');
             } catch (\Exception $e) {
-                Log::error('X callback: Token verification exception', [
+                Log::error('X access token: Token verification exception', [
                     'message' => $e->getMessage(),
-                    'access_token_length' => strlen($accessToken),
-                    'access_token_prefix' => substr($accessToken, 0, 20) . '...'
                 ]);
                 
-                // レート制限エラーの場合
                 if (strpos($e->getMessage(), 'rate limit') !== false) {
-                return response()->json([
-                    'error' => 'Rate limit exceeded',
-                    'loggedIn' => false
-                ], 429);
+                    return response()->json([
+                        'error' => 'Rate limit exceeded',
+                        'loggedIn' => false
+                    ], 429);
                 }
                 
                 return response()->json([
@@ -338,19 +480,16 @@ class AuthController extends Controller
             }
 
             if (!$user) {
-                Log::error('X callback: User verification failed', [
-                    'access_token_length' => strlen($accessToken),
-                    'access_token_prefix' => substr($accessToken, 0, 20) . '...'
-                ]);
+                Log::error('X access token: User verification failed');
                 return response()->json([
                     'error' => 'User verification failed',
                     'loggedIn' => false
                 ], 401);
             }
 
-            Log::info('X callback: Success', ['user_id' => $user['user_id'], 'email' => $user['email'] ?? 'not provided']);
+            Log::info('X access token: Success', ['user_id' => $user['user_id'], 'email' => $user['email'] ?? 'not provided']);
             
-            // ログイン履歴をDBに保存（users.id を格納）
+            // ログイン履歴をDBに保存
             try {
                 LoginHistory::create([
                     'user_id' => $user['provider_user_id'] ?? null,
@@ -363,11 +502,8 @@ class AuthController extends Controller
                 ]);
                 Log::info('Login history saved', ['user_id' => $user['user_id']]);
             } catch (\Exception $e) {
-                // ログイン履歴の保存に失敗してもログインは成功とする
                 Log::error('Failed to save login history: ' . $e->getMessage());
             }
-            
-            $refreshToken = $tokenData['refresh_token'] ?? null;
             
             $result = response()->json([
                 'loggedIn' => true,
@@ -379,11 +515,57 @@ class AuthController extends Controller
                     'username' => $user['username'] ?? null,
                 ],
                 'access_token' => $accessToken,
-                'refresh_token' => $refreshToken,
-                'expires_in' => $tokenData['expires_in'] ?? 7200, // デフォルト2時間
+                'access_token_secret' => $accessTokenSecret,
             ]);
             $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
             return $result;
+        } catch (\Exception $e) {
+            Log::error('X access token error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            $result = response()->json([
+                'error' => 'Authentication failed',
+                'loggedIn' => false
+            ], 401);
+            $this->logMethodEnd(__FUNCTION__, $result, __FILE__, __LINE__);
+            return $result;
+        }
+    }
+
+    /**
+     * X(Twitter)認証のコールバック処理
+     * OAuth 1.0aのコールバック（oauth_tokenとoauth_verifierを受け取る）
+     * フロントエンドからのリクエストで、アクセストークンを取得する
+     */
+    public function xCallback(Request $request): JsonResponse
+    {
+        $this->logMethodStart(__FUNCTION__, ['request' => $request], __FILE__, __LINE__);
+        Log::info('X callback: Request received', [
+            'method' => $request->method(),
+            'input' => $request->all(),
+        ]);
+
+        try {
+            $oauthToken = $request->input('oauth_token');
+            $oauthVerifier = $request->input('oauth_verifier');
+            $oauthTokenSecret = $request->input('oauth_token_secret');
+
+            if (!$oauthToken || !$oauthVerifier || !$oauthTokenSecret) {
+                Log::error('X callback: Missing required parameters');
+                return response()->json([
+                    'error' => 'Missing required parameters',
+                    'loggedIn' => false
+                ], 400);
+            }
+
+            // アクセストークン取得エンドポイントを呼び出す
+            $accessTokenRequest = new Request([
+                'oauth_token' => $oauthToken,
+                'oauth_verifier' => $oauthVerifier,
+                'oauth_token_secret' => $oauthTokenSecret,
+            ]);
+
+            return $this->xAccessToken($accessTokenRequest);
         } catch (\Exception $e) {
             Log::error('X callback error: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()

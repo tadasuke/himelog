@@ -13,6 +13,7 @@ function RecordRanking({ user, onShopClick, onGirlClick }) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
   const [expandedCards, setExpandedCards] = useState(new Set())
+  const [showAll, setShowAll] = useState(false)
 
   const fetchRanking = useCallback(async (type) => {
     if (!user?.id) return
@@ -53,6 +54,7 @@ function RecordRanking({ user, onShopClick, onGirlClick }) {
 
   useEffect(() => {
     fetchRanking(rankingType)
+    setShowAll(false) // ランキングタイプが変更されたら表示をリセット
   }, [user?.id, rankingType, fetchRanking])
 
   const formatDate = (dateString) => {
@@ -113,7 +115,7 @@ function RecordRanking({ user, onShopClick, onGirlClick }) {
         )}
         {!isLoading && !error && records.length > 0 && (
           <div className="ranking-list">
-            {records.map((record, index) => {
+            {(showAll ? records : records.slice(0, 3)).map((record, index) => {
               const expanded = isExpanded(record.id)
               const isClickable = rankingType !== 'visit_count'
               return (
@@ -286,6 +288,17 @@ function RecordRanking({ user, onShopClick, onGirlClick }) {
                 </div>
               )
             })}
+            {/* 3件目まで表示されていて、まだ全て表示していない場合に「全て表示」リンクを表示 */}
+            {!showAll && records.length > 3 && (
+              <div className="show-all-container">
+                <button
+                  className="show-all-link"
+                  onClick={() => setShowAll(true)}
+                >
+                  全て表示
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -295,7 +308,7 @@ function RecordRanking({ user, onShopClick, onGirlClick }) {
         <div className="ranking-charts-section">
           <div className="ranking-chart-container">
             <h3 className="ranking-chart-title">総合評価の推移</h3>
-            <OverallRatingChart user={user} />
+            <OverallRatingChart user={user} onGirlClick={onGirlClick} />
           </div>
           <div className="ranking-chart-container">
             <h3 className="ranking-chart-title">総合評価の割合</h3>

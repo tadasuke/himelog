@@ -28,10 +28,20 @@ class Record extends Model
         'review',
         'price',
         'course',
+        'public_review',
+        'public_include_shop_name',
+        'public_include_girl_name',
+        'public_include_course',
+        'public_include_price',
+        'public_met_date',
     ];
 
     protected $casts = [
         'visit_date' => 'date',
+        'public_include_shop_name' => 'boolean',
+        'public_include_girl_name' => 'boolean',
+        'public_include_course' => 'boolean',
+        'public_include_price' => 'boolean',
     ];
 
     protected $appends = ['shop_type', 'girl_name'];

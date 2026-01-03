@@ -410,16 +410,9 @@ function App() {
         // ローカルストレージに保存
         localStorage.setItem('user', JSON.stringify(data.user))
         localStorage.setItem('isLoggedIn', 'true')
-        // 認証トークンを保存
+        // 認証トークンを保存（OAuth 1.0aではJSON文字列形式）
         if (accessToken) {
           localStorage.setItem('authToken', accessToken)
-        }
-        // リフレッシュトークンと有効期限を保存
-        if (data.refresh_token) {
-          setRefreshToken(data.refresh_token)
-        }
-        if (data.expires_in) {
-          setTokenExpiry(data.expires_in)
         }
         
         setUser(data.user)

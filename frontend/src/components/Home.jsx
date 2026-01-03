@@ -149,18 +149,32 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
   }
 
   const handlePublishClick = (record) => {
-    // 公開オプション選択モーダルを表示
-    // 出会った日の初期値はレビュー登録日（created_at）をYYYY年M月形式で設定
-    const initialMetDate = formatDateForMetDate(record.created_at || new Date().toISOString())
-    setPublishOptions({
-      record: record,
-      includeShopName: false,
-      includeGirlName: false,
-      includeCourse: false,
-      includePrice: false,
-      publicReview: record.review || '',
-      metDate: initialMetDate
-    })
+    // 公開済みの場合はDBに保存された公開用データを使用、未公開の場合はデフォルト値を使用
+    if (record.public_token) {
+      // 公開済み：DBに保存された公開用データを初期値として使用
+      const initialMetDate = record.public_met_date || formatDateForMetDate(record.created_at || new Date().toISOString())
+      setPublishOptions({
+        record: record,
+        includeShopName: record.public_include_shop_name ?? false,
+        includeGirlName: record.public_include_girl_name ?? false,
+        includeCourse: record.public_include_course ?? false,
+        includePrice: record.public_include_price ?? false,
+        publicReview: record.public_review ?? '',
+        metDate: initialMetDate
+      })
+    } else {
+      // 未公開：デフォルト値を使用
+      const initialMetDate = formatDateForMetDate(record.created_at || new Date().toISOString())
+      setPublishOptions({
+        record: record,
+        includeShopName: false,
+        includeGirlName: false,
+        includeCourse: false,
+        includePrice: false,
+        publicReview: record.review || '',
+        metDate: initialMetDate
+      })
+    }
   }
 
   const handleCancelPublishOptions = () => {
@@ -222,10 +236,19 @@ function Home({ user, onLogout, currentPage, onRecordAdded, onRecordsLoaded, onS
         recordId: publishOptions.record.id
       })
 
-      // 記録を更新してpublic_tokenを反映
+      // 記録を更新してpublic_tokenと公開用データを反映
       setRecords(prev => prev.map(r => 
         r.id === publishOptions.record.id 
-          ? { ...r, public_token: data.public_token }
+          ? { 
+              ...r, 
+              public_token: data.public_token,
+              public_review: publishOptions.publicReview,
+              public_include_shop_name: publishOptions.includeShopName,
+              public_include_girl_name: publishOptions.includeGirlName,
+              public_include_course: publishOptions.includeCourse,
+              public_include_price: publishOptions.includePrice,
+              public_met_date: publishOptions.metDate
+            }
           : r
       ))
 

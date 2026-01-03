@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import PropTypes from 'prop-types'
 import './Login.css'
-import { generateCodeVerifier, generateCodeChallenge, generateXAuthUrl } from '../utils/xAuth'
+import { generateXAuthUrl, getOAuthTokenFromUrl, getOAuthVerifierFromUrl, getErrorFromUrl } from '../utils/xAuth'
 import { getApiUrl, setRefreshToken, setTokenExpiry } from '../utils/api'
 
 function Login({ onGoogleLogin, onXLogin }) {
@@ -105,7 +105,7 @@ function Login({ onGoogleLogin, onXLogin }) {
     }
   }, [onGoogleLogin])
 
-  // X認証のコールバック処理
+  // X認証のコールバック処理（OAuth 1.0a）
   useEffect(() => {
     // 既に処理済みの場合は何もしない
     if (xCallbackProcessed.current) {
@@ -113,10 +113,9 @@ function Login({ onGoogleLogin, onXLogin }) {
     }
 
     const handleXCallback = async () => {
-      const urlParams = new URLSearchParams(window.location.search)
-      const code = urlParams.get('code')
-      const state = urlParams.get('state')
-      const error = urlParams.get('error')
+      const oauthToken = getOAuthTokenFromUrl()
+      const oauthVerifier = getOAuthVerifierFromUrl()
+      const error = getErrorFromUrl()
 
       // URLパラメータを即座に削除して、重複リクエストを防ぐ
       window.history.replaceState({}, document.title, window.location.pathname)
@@ -128,16 +127,15 @@ function Login({ onGoogleLogin, onXLogin }) {
         return
       }
 
-      if (code && state) {
+      if (oauthToken && oauthVerifier) {
         // 処理済みフラグを設定（重複リクエストを防ぐ）
         xCallbackProcessed.current = true
 
-        // 保存されたstateとcode_verifierを取得
-        const savedState = localStorage.getItem('x_auth_state')
-        const codeVerifier = localStorage.getItem('x_code_verifier')
+        // 保存されたoauth_token_secretを取得
+        const oauthTokenSecret = localStorage.getItem('x_oauth_token_secret')
 
-        if (!savedState || savedState !== state || !codeVerifier) {
-          console.error('X auth: Invalid state or missing code_verifier')
+        if (!oauthTokenSecret) {
+          console.error('X auth: Missing oauth_token_secret')
           // エラーメッセージは画面に表示しない
           return
         }
@@ -147,19 +145,17 @@ function Login({ onGoogleLogin, onXLogin }) {
           
           const apiUrl = getApiUrl('/api/auth/x/callback')
           const requestBody = {
-            code,
-            code_verifier: codeVerifier,
-            redirect_uri: window.location.origin + window.location.pathname,
+            oauth_token: oauthToken,
+            oauth_verifier: oauthVerifier,
+            oauth_token_secret: oauthTokenSecret,
           }
           
           console.log('X callback: Sending request to backend', {
             url: apiUrl,
-            code: code.substring(0, 20) + '...',
-            code_verifier: codeVerifier.substring(0, 20) + '...',
-            redirect_uri: requestBody.redirect_uri
+            oauth_token: oauthToken.substring(0, 20) + '...',
           })
           
-          // 認証コードをアクセストークンに交換（バックエンドで処理）
+          // アクセストークンを取得（バックエンドで処理）
           const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
@@ -193,17 +189,14 @@ function Login({ onGoogleLogin, onXLogin }) {
 
           if (data.loggedIn && data.user) {
             // クリーンアップ
-            localStorage.removeItem('x_auth_state')
-            localStorage.removeItem('x_code_verifier')
-            // リフレッシュトークンと有効期限を保存
-            if (data.refresh_token) {
-              setRefreshToken(data.refresh_token)
-            }
-            if (data.expires_in) {
-              setTokenExpiry(data.expires_in)
-            }
+            localStorage.removeItem('x_oauth_token_secret')
+            // アクセストークンとアクセストークンシークレットをJSON文字列として保存
+            const tokenJson = JSON.stringify({
+              access_token: data.access_token,
+              access_token_secret: data.access_token_secret,
+            })
             // ログイン処理
-            onXLogin(data.access_token)
+            onXLogin(tokenJson)
           } else {
             throw new Error('無効なレスポンス')
           }
@@ -211,8 +204,7 @@ function Login({ onGoogleLogin, onXLogin }) {
           console.error('X auth callback error:', error)
           // エラーメッセージは画面に表示しない
           // クリーンアップ
-          localStorage.removeItem('x_auth_state')
-          localStorage.removeItem('x_code_verifier')
+          localStorage.removeItem('x_oauth_token_secret')
           // エラー時は処理済みフラグをリセット（再試行可能にする）
           xCallbackProcessed.current = false
         } finally {
@@ -260,29 +252,37 @@ function Login({ onGoogleLogin, onXLogin }) {
   const handleXLogin = async () => {
     try {
       setIsXLoading(true)
-      const clientId = import.meta.env.VITE_X_CLIENT_ID || ''
-      
-      if (!clientId) {
-        console.error('X Client ID が設定されていません')
-        // エラーメッセージは画面に表示しない
-        setIsXLoading(false)
-        return
+      const callbackUrl = window.location.origin + window.location.pathname
+
+      // ステップ1: リクエストトークンを取得
+      const apiUrl = getApiUrl('/api/auth/x/request-token')
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          callback_url: callbackUrl,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'リクエストトークンの取得に失敗しました')
       }
 
-      // PKCEパラメータを生成
-      const codeVerifier = generateCodeVerifier()
-      const codeChallenge = await generateCodeChallenge(codeVerifier)
-      const redirectUri = window.location.origin + window.location.pathname
+      const tokenData = await response.json()
+      const { oauth_token, oauth_token_secret } = tokenData
 
-      // 認証URLを生成
-      const authUrl = generateXAuthUrl(clientId, redirectUri, codeChallenge)
+      if (!oauth_token || !oauth_token_secret) {
+        throw new Error('リクエストトークンが取得できませんでした')
+      }
 
-      // stateとcode_verifierを保存
-      const state = new URLSearchParams(authUrl).get('state')
-      localStorage.setItem('x_auth_state', state)
-      localStorage.setItem('x_code_verifier', codeVerifier)
+      // oauth_token_secretを保存（コールバックで使用するため）
+      localStorage.setItem('x_oauth_token_secret', oauth_token_secret)
 
-      // X認証ページにリダイレクト
+      // ステップ2: X認証ページにリダイレクト
+      const authUrl = generateXAuthUrl(oauth_token)
       window.location.href = authUrl
     } catch (error) {
       console.error('X login error:', error)
@@ -300,6 +300,25 @@ function Login({ onGoogleLogin, onXLogin }) {
         </div>
         <div ref={googleButtonRef} className="google-signin-button-hidden"></div>
         <button
+          className="x-login-btn"
+          onClick={handleXLogin}
+          disabled={isXLoading}
+        >
+          {isXLoading ? (
+            <span>認証中...</span>
+          ) : (
+            <>
+              <svg className="x-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+              </svg>
+              <span>Xでログイン</span>
+            </>
+          )}
+        </button>
+        <div className="login-divider">
+          <span className="divider-text">または</span>
+        </div>
+        <button
           className="google-login-btn"
           onClick={handleGoogleLogin}
           disabled={isGoogleLoading}
@@ -315,25 +334,6 @@ function Login({ onGoogleLogin, onXLogin }) {
                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
               </svg>
               <span>Googleでログイン</span>
-            </>
-          )}
-        </button>
-        <div className="login-divider">
-          <span className="divider-text">または</span>
-        </div>
-        <button
-          className="x-login-btn"
-          onClick={handleXLogin}
-          disabled={isXLoading}
-        >
-          {isXLoading ? (
-            <span>認証中...</span>
-          ) : (
-            <>
-              <svg className="x-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-              </svg>
-              <span>Xでログイン</span>
             </>
           )}
         </button>
