@@ -308,7 +308,7 @@ function RecordRanking({ user, onShopClick, onGirlClick }) {
         <div className="ranking-charts-section">
           <div className="ranking-chart-container">
             <h3 className="ranking-chart-title">総合評価の推移</h3>
-            <OverallRatingChart user={user} />
+            <OverallRatingChart user={user} onGirlClick={onGirlClick} />
           </div>
           <div className="ranking-chart-container">
             <h3 className="ranking-chart-title">総合評価の割合</h3>

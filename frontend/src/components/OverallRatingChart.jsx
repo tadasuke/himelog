@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import PropTypes from 'prop-types'
 import {
   Chart as ChartJS,
@@ -26,10 +26,14 @@ ChartJS.register(
   Filler
 )
 
-function OverallRatingChart({ user }) {
+function OverallRatingChart({ user, onGirlClick }) {
   const [chartData, setChartData] = useState(null)
+  const [records, setRecords] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
+  const chartRef = useRef(null)
+  const tooltipRef = useRef(null)
+  const tooltipDataRef = useRef(null)
 
   useEffect(() => {
     if (!user?.id) return
@@ -63,9 +67,13 @@ function OverallRatingChart({ user }) {
 
         if (records.length === 0) {
           setChartData(null)
+          setRecords([])
           setIsLoading(false)
           return
         }
+
+        // レコードデータを状態に保存
+        setRecords(records)
 
         // ラベル（投稿順）と総合評価のデータを準備
         const labels = records.map((record, index) => {
@@ -112,24 +120,74 @@ function OverallRatingChart({ user }) {
     fetchChartData()
   }, [user?.id])
 
-  const chartOptions = {
+
+  const chartOptions = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
+    interaction: {
+      mode: 'index',
+      intersect: false,
+    },
     plugins: {
       legend: {
         display: false
       },
-      tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        titleColor: '#ffffff',
-        bodyColor: '#e0e0e0',
-        borderColor: 'rgba(74, 144, 226, 0.5)',
-        borderWidth: 1,
-        padding: 12,
-        displayColors: false,
-        callbacks: {
-          label: function(context) {
-            return `総合評価: ${context.parsed.y}星`
+        tooltip: {
+        enabled: false,
+        external: function(context) {
+          if (!tooltipRef.current) return
+
+          const tooltipModel = context.tooltip
+          tooltipDataRef.current = tooltipModel
+
+          if (tooltipModel.opacity === 0) {
+            tooltipRef.current.style.opacity = 0
+            tooltipRef.current.style.pointerEvents = 'none'
+            return
+          }
+
+          const chart = context.chart
+          const position = chart.canvas.getBoundingClientRect()
+          const tooltipEl = tooltipRef.current
+
+          // ツールチップのコンテンツを更新
+          const dataIndex = tooltipModel.dataPoints[0]?.dataIndex
+          if (dataIndex !== undefined && records[dataIndex]) {
+            const record = records[dataIndex]
+            const rating = tooltipModel.dataPoints[0]?.parsed.y
+            const girlName = record?.girl_name || record?.girl?.girl_name || ''
+
+            tooltipEl.innerHTML = `
+              <div style="padding: 12px; background: rgba(0, 0, 0, 0.8); border: 1px solid rgba(74, 144, 226, 0.5); border-radius: 4px; color: #e0e0e0; white-space: nowrap;">
+                <div style="color: #ffffff; margin-bottom: 8px;">総合評価: ${rating}</div>
+                ${girlName ? `<div style="color: #4a90e2; cursor: pointer; text-decoration: underline;" class="tooltip-girl-name" data-girl-name="${girlName}">${girlName}</div>` : ''}
+              </div>
+            `
+
+            // 位置を設定
+            tooltipEl.style.opacity = 1
+            tooltipEl.style.left = position.left + tooltipModel.caretX + 'px'
+            tooltipEl.style.top = position.top + tooltipModel.caretY - 10 + 'px'
+            tooltipEl.style.position = 'fixed'
+            tooltipEl.style.pointerEvents = 'auto'
+            tooltipEl.style.transform = 'translate(-50%, -100%)'
+
+            // 姫の名前のクリックイベントを設定（イベント委譲を使用）
+            if (!tooltipEl._hasClickHandler && onGirlClick) {
+              const handleTooltipClick = (e) => {
+                const girlNameElement = e.target.closest('.tooltip-girl-name')
+                if (girlNameElement) {
+                  const clickedGirlName = girlNameElement.getAttribute('data-girl-name')
+                  if (clickedGirlName) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onGirlClick(clickedGirlName)
+                  }
+                }
+              }
+              tooltipEl.addEventListener('click', handleTooltipClick)
+              tooltipEl._hasClickHandler = true
+            }
           }
         }
       }
@@ -158,8 +216,13 @@ function OverallRatingChart({ user }) {
           lineWidth: 1
         }
       }
+    },
+    onHover: (event, activeElements) => {
+      if (event.native?.target) {
+        event.native.target.style.cursor = activeElements.length > 0 ? 'pointer' : 'default'
+      }
     }
-  }
+  }), [records, onGirlClick])
 
   if (isLoading) {
     return (
@@ -187,8 +250,23 @@ function OverallRatingChart({ user }) {
 
   return (
     <div className="chart-container">
-      <div className="chart-wrapper">
-        <Line data={chartData} options={chartOptions} />
+      <div className="chart-wrapper" style={{ position: 'relative' }}>
+        <Line 
+          ref={chartRef}
+          data={chartData} 
+          options={chartOptions}
+        />
+        <div
+          ref={tooltipRef}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            opacity: 0,
+            position: 'fixed',
+            pointerEvents: 'none',
+            zIndex: 1000,
+            transform: 'translate(-50%, -100%)'
+          }}
+        />
       </div>
     </div>
   )
@@ -200,7 +278,8 @@ OverallRatingChart.propTypes = {
     name: PropTypes.string,
     email: PropTypes.string,
     avatar: PropTypes.string,
-  })
+  }),
+  onGirlClick: PropTypes.func
 }
 
 export default OverallRatingChart
