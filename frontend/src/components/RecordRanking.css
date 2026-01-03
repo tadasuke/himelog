@@ -399,6 +399,39 @@
   letter-spacing: 0.1px;
 }
 
+.show-all-container {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0;
+  margin-top: 0;
+  margin-left: auto;
+  width: fit-content;
+}
+
+.show-all-link {
+  background: none;
+  border: none;
+  color: #6f8cff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 8px 16px;
+  transition: color 0.3s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  letter-spacing: 0.1px;
+}
+
+.show-all-link:hover {
+  color: #e86aff;
+}
+
+.show-all-link:active {
+  color: #e86aff;
+  opacity: 0.8;
+}
+
 .error-message {
   color: #ff6b6b;
   background-color: rgba(255, 59, 48, 0.1);
