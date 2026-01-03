@@ -1046,7 +1046,6 @@ class RecordService
         .review-text {
             color: #e0e0e0;
             line-height: 1.8;
-            white-space: pre-wrap;
         }
         .footer {
             margin-top: 32px;

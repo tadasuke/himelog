@@ -172,20 +172,34 @@ function OverallRatingChart({ user, onGirlClick }) {
             tooltipEl.style.pointerEvents = 'auto'
             tooltipEl.style.transform = 'translate(-50%, -100%)'
 
-            // 姫の名前のクリックイベントを設定（イベント委譲を使用）
+            // 姫の名前のクリック/タッチイベントを設定（イベント委譲を使用）
             if (!tooltipEl._hasClickHandler && onGirlClick) {
-              const handleTooltipClick = (e) => {
+              let lastTriggerTime = 0
+              let lastTarget = null
+
+              const handleTooltipInteraction = (e) => {
                 const girlNameElement = e.target.closest('.tooltip-girl-name')
                 if (girlNameElement) {
                   const clickedGirlName = girlNameElement.getAttribute('data-girl-name')
                   if (clickedGirlName) {
+                    // 重複実行を防ぐ（100ms以内の同じターゲットへの連続実行を防ぐ）
+                    const now = Date.now()
+                    if (now - lastTriggerTime < 100 && lastTarget === clickedGirlName) {
+                      return
+                    }
+                    lastTriggerTime = now
+                    lastTarget = clickedGirlName
+
                     e.preventDefault()
                     e.stopPropagation()
                     onGirlClick(clickedGirlName)
                   }
                 }
               }
-              tooltipEl.addEventListener('click', handleTooltipClick)
+
+              // タッチイベント（スマホ用）とクリックイベント（PC用）の両方をリッスン
+              tooltipEl.addEventListener('touchstart', handleTooltipInteraction, { passive: false })
+              tooltipEl.addEventListener('click', handleTooltipInteraction)
               tooltipEl._hasClickHandler = true
             }
           }
