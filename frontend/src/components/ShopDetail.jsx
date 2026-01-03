@@ -5,7 +5,7 @@ import StarRating from './StarRating'
 import RecordForm from './RecordForm'
 import { getApiUrl, fetchWithAuth, getAuthToken, handleAuthError, getAuthHeaders } from '../utils/api'
 
-function ShopDetail({ user, shopType, shopName, onGirlClick }) {
+function ShopDetail({ user, shopType, shopName, onGirlClick, onModalStateChange }) {
   const [records, setRecords] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -168,6 +168,44 @@ function ShopDetail({ user, shopType, shopName, onGirlClick }) {
 
     fetchPublicUrls()
   }, [records, user?.id])
+
+  // モーダルの表示状態を親コンポーネントに通知
+  useEffect(() => {
+    if (onModalStateChange) {
+      const isOpen = !!(publishOptions.record || editingRecord)
+      onModalStateChange(isOpen)
+    }
+  }, [publishOptions.record, editingRecord, onModalStateChange])
+
+  // モーダル表示時に背景のスクロールを無効化
+  useEffect(() => {
+    const isOpen = !!(publishOptions.record || editingRecord)
+    if (isOpen) {
+      // 現在のスクロール位置を保存
+      const scrollY = window.scrollY
+      document.body.style.position = 'fixed'
+      document.body.style.top = `-${scrollY}px`
+      document.body.style.width = '100%'
+      document.body.style.overflow = 'hidden'
+    } else {
+      // スクロール位置を復元
+      const scrollY = document.body.style.top
+      document.body.style.position = ''
+      document.body.style.top = ''
+      document.body.style.width = ''
+      document.body.style.overflow = ''
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || '0') * -1)
+      }
+    }
+    // クリーンアップ関数
+    return () => {
+      document.body.style.position = ''
+      document.body.style.top = ''
+      document.body.style.width = ''
+      document.body.style.overflow = ''
+    }
+  }, [publishOptions.record, editingRecord])
 
   const formatDate = (dateString) => {
     const date = new Date(dateString)
@@ -1345,6 +1383,7 @@ ShopDetail.propTypes = {
   shopType: PropTypes.string.isRequired,
   shopName: PropTypes.string.isRequired,
   onGirlClick: PropTypes.func,
+  onModalStateChange: PropTypes.func,
 }
 
 export default ShopDetail

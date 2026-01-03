@@ -6,7 +6,7 @@ import StarRating from './StarRating'
 import RecordForm from './RecordForm'
 import { getApiUrl, fetchWithAuth, getAuthToken, handleAuthError } from '../utils/api'
 
-function ReviewSearch({ user, onShopClick, onGirlClick }) {
+function ReviewSearch({ user, onShopClick, onGirlClick, onModalStateChange }) {
   const [shopTypes, setShopTypes] = useState([])
   const [isLoadingShopTypes, setIsLoadingShopTypes] = useState(true)
   const [searchFilters, setSearchFilters] = useState({
@@ -524,6 +524,44 @@ function ReviewSearch({ user, onShopClick, onGirlClick }) {
       filterRecordsByFreeWord(allRecords, freeWordSearch)
     }
   }, [freeWordSearch, allRecords, filterRecordsByFreeWord])
+
+  // モーダルの表示状態を親コンポーネントに通知
+  useEffect(() => {
+    if (onModalStateChange) {
+      const isOpen = !!(publishOptions.record || deleteConfirmRecord || editingRecord)
+      onModalStateChange(isOpen)
+    }
+  }, [publishOptions.record, deleteConfirmRecord, editingRecord, onModalStateChange])
+
+  // モーダル表示時に背景のスクロールを無効化
+  useEffect(() => {
+    const isOpen = !!(publishOptions.record || deleteConfirmRecord || editingRecord)
+    if (isOpen) {
+      // 現在のスクロール位置を保存
+      const scrollY = window.scrollY
+      document.body.style.position = 'fixed'
+      document.body.style.top = `-${scrollY}px`
+      document.body.style.width = '100%'
+      document.body.style.overflow = 'hidden'
+    } else {
+      // スクロール位置を復元
+      const scrollY = document.body.style.top
+      document.body.style.position = ''
+      document.body.style.top = ''
+      document.body.style.width = ''
+      document.body.style.overflow = ''
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || '0') * -1)
+      }
+    }
+    // クリーンアップ関数
+    return () => {
+      document.body.style.position = ''
+      document.body.style.top = ''
+      document.body.style.width = ''
+      document.body.style.overflow = ''
+    }
+  }, [publishOptions.record, deleteConfirmRecord, editingRecord])
 
   // カードの展開/折りたたみ
   const toggleCard = (recordId) => {
@@ -1281,6 +1319,7 @@ ReviewSearch.propTypes = {
   }),
   onShopClick: PropTypes.func,
   onGirlClick: PropTypes.func,
+  onModalStateChange: PropTypes.func,
 }
 
 export default ReviewSearch
