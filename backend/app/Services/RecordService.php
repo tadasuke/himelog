@@ -743,10 +743,10 @@ class RecordService
      * @param string $userId
      * @param bool $includeShopName お店の名前を含めるか
      * @param bool $includeGirlName ヒメの名前を含めるか
-     * @param string $publicReview 公開用の感想（DBには保存しない）
+     * @param string $publicReview 公開用の感想
      * @param bool $includeCourse コースを含めるか
      * @param bool $includePrice 料金を含めるか
-     * @param string $metDate 出会った日（テキスト、DBには保存しない）
+     * @param string $metDate 出会った日（テキスト）
      * @return string 公開URL
      */
     public function publishRecord(Record $record, string $userId, bool $includeShopName = true, bool $includeGirlName = true, string $publicReview = '', bool $includeCourse = false, bool $includePrice = false, string $metDate = ''): string
@@ -767,6 +767,15 @@ class RecordService
             if (!$record->public_token) {
                 $record->generatePublicToken();
             }
+
+            // 公開用データをDBに保存
+            $record->public_review = $publicReview;
+            $record->public_include_shop_name = $includeShopName;
+            $record->public_include_girl_name = $includeGirlName;
+            $record->public_include_course = $includeCourse;
+            $record->public_include_price = $includePrice;
+            $record->public_met_date = $metDate;
+            $record->save();
 
             // HTMLを生成
             $html = $this->generatePublicHtml($record, $includeShopName, $includeGirlName, $publicReview, $includeCourse, $includePrice, $metDate);
