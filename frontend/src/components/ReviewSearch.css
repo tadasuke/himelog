@@ -45,6 +45,28 @@
   letter-spacing: 0.1px;
 }
 
+.free-word-search-input {
+  width: 100%;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: #e0e0e0;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.3s ease;
+}
+
+.free-word-search-input:focus {
+  outline: none;
+  border-color: rgba(232, 106, 255, 0.5);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.free-word-search-input::placeholder {
+  color: #a0a0a0;
+}
+
 .shop-type-checkboxes {
   display: flex;
   flex-wrap: wrap;

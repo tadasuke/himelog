@@ -258,6 +258,15 @@
             </div>
             <div id="error-message" class="error-message" style="display: none;"></div>
             <div id="loading-message" class="loading-message" style="display: none;">認証中...</div>
+            <button id="x-login-btn" class="x-login-btn">
+                <svg class="x-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+                <span>Xでログイン</span>
+            </button>
+            <div class="login-divider">
+                <span class="divider-text">または</span>
+            </div>
             <button id="google-login-btn" class="google-login-btn">
                 <svg class="google-icon" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -267,18 +276,6 @@
                 </svg>
                 <span>Googleでログイン</span>
             </button>
-            <!-- Xログインボタンは一旦非表示 -->
-            <!--
-            <div class="login-divider">
-                <span class="divider-text">または</span>
-            </div>
-            <button id="x-login-btn" class="x-login-btn">
-                <svg class="x-icon" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                </svg>
-                <span>Xでログイン</span>
-            </button>
-            -->
         </div>
     </div>
 
@@ -310,12 +307,15 @@
             const hostname = window.location.hostname;
             const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
             
-            // window.API_BASE_URLが設定されている場合はそれを使用（最優先）
-            if (window.API_BASE_URL) {
+            // ローカル環境の場合は、Viteのプロキシ経由でアクセス（相対パス）
+            // これにより、バックエンドのポートが8000以外でも動作する
+            if (isLocalhost) {
+                // Viteのプロキシ経由でアクセス（相対パス）
+                // vite.config.jsで/api/*はhttp://localhost:8000にプロキシされる
+                apiBaseUrl = '';
+            } else if (window.API_BASE_URL) {
+                // 本番環境では、window.API_BASE_URLが設定されている場合はそれを使用
                 apiBaseUrl = window.API_BASE_URL;
-            } else if (isLocalhost) {
-                // ローカル環境では相対パスまたは localhost:8000 を使用
-                apiBaseUrl = 'http://localhost:8000';
             } else {
                 // フォールバック: app.hime-log.jp → api.hime-log.jp に変換
                 apiBaseUrl = window.location.origin.replace(/^https?:\/\/(app\.)?/, (match, app) => {
@@ -416,55 +416,57 @@
         }
 
 
-        // X認証の処理
+        // X認証の処理（OAuth 1.0a）
         function initXAuth() {
             const config = getConfig();
             
-            if (!config.xClientId) {
-                console.warn('X Client IDが設定されていません。環境変数を設定するか、config.jsファイルを作成してください。');
-                // エラーは表示しない（開発環境では正常な場合がある）
-                document.getElementById('x-login-btn').disabled = true;
-                document.getElementById('x-login-btn').textContent = 'X認証は設定されていません';
-                return;
-            }
-
+            // X Client IDはOAuth 1.0aではConsumer Keyとして使用されるが、
+            // バックエンドで管理されるため、ここでは必須ではない
             document.getElementById('x-login-btn').addEventListener('click', () => {
                 handleXLogin(config);
             });
         }
 
-        // X認証の開始
+        // X認証の開始（OAuth 1.0a）
         async function handleXLogin(config) {
             try {
                 showLoading();
                 
-                // PKCEパラメータを生成
-                const codeVerifier = generateCodeVerifier();
-                const codeChallenge = await generateCodeChallenge(codeVerifier);
-                const redirectUri = window.location.origin + '/login/callback.html';
+                const callbackUrl = window.location.origin + '/login/callback.html';
                 
-                // stateを生成
-                const state = generateState();
-                
-                // セッションストレージに保存
-                sessionStorage.setItem('x_code_verifier', codeVerifier);
-                sessionStorage.setItem('x_auth_state', state);
-                
-                // X認証URLを生成
-                const authUrl = `https://twitter.com/i/oauth2/authorize?` +
-                    `response_type=code` +
-                    `&client_id=${encodeURIComponent(config.xClientId)}` +
-                    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-                    `&scope=tweet.read users.read offline.access` +
-                    `&state=${encodeURIComponent(state)}` +
-                    `&code_challenge=${encodeURIComponent(codeChallenge)}` +
-                    `&code_challenge_method=S256`;
-                
-                // X認証ページにリダイレクト
+                // ステップ1: リクエストトークンを取得
+                const apiUrl = `${config.apiBaseUrl}/api/auth/x/request-token`;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        callback_url: callbackUrl,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || 'リクエストトークンの取得に失敗しました');
+                }
+
+                const tokenData = await response.json();
+                const { oauth_token, oauth_token_secret } = tokenData;
+
+                if (!oauth_token || !oauth_token_secret) {
+                    throw new Error('リクエストトークンが取得できませんでした');
+                }
+
+                // oauth_token_secretを保存（コールバックで使用するため）
+                sessionStorage.setItem('x_oauth_token_secret', oauth_token_secret);
+
+                // ステップ2: X認証ページにリダイレクト
+                const authUrl = `https://api.x.com/oauth/authenticate?oauth_token=${encodeURIComponent(oauth_token)}`;
                 window.location.href = authUrl;
             } catch (error) {
                 console.error('X認証エラー:', error);
-                showError('X認証の開始に失敗しました');
+                showError('X認証の開始に失敗しました: ' + error.message);
                 hideLoading();
             }
         }
@@ -591,8 +593,7 @@
             console.log('window.X_CLIENT_ID:', window.X_CLIENT_ID ? 'set' : 'not set');
             
             initGoogleAuth();
-            // Xログインボタンは一旦非表示のため、初期化をスキップ
-            // initXAuth();
+            initXAuth();
         });
         
         // 念のため、window.onloadでも初期化（config.jsが遅延読み込みされる場合に備える）

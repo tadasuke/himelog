@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import PropTypes from 'prop-types'
 import './ReviewSearch.css'
 import '../components/Home.css'
@@ -17,8 +17,10 @@ function ReviewSearch({ user, onShopClick, onGirlClick }) {
     visitDateTo: '',
   })
   const [records, setRecords] = useState([])
+  const [allRecords, setAllRecords] = useState([]) // サーバーから取得した全記録を保持
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [freeWordSearch, setFreeWordSearch] = useState('') // フリーワード検索
   const [expandedCards, setExpandedCards] = useState(new Set())
   const [recordPublicUrls, setRecordPublicUrls] = useState({})
   const [editingRecord, setEditingRecord] = useState(null)
@@ -36,6 +38,7 @@ function ReviewSearch({ user, onShopClick, onGirlClick }) {
     metDate: ''
   })
   const [unpublishingRecord, setUnpublishingRecord] = useState(null)
+  const hasInitialSearchRef = useRef(false)
 
   // お店の種類を取得
   useEffect(() => {
@@ -87,7 +90,7 @@ function ReviewSearch({ user, onShopClick, onGirlClick }) {
   }, [user?.id])
 
   // 検索実行
-  const handleSearch = async () => {
+  const handleSearch = useCallback(async () => {
     if (!user?.id) return
 
     const authToken = getAuthToken()
@@ -150,14 +153,28 @@ function ReviewSearch({ user, onShopClick, onGirlClick }) {
         return new Date(dateB) - new Date(dateA)
       })
 
-      setRecords(sortedRecords)
+      // 全記録を保持
+      setAllRecords(sortedRecords)
     } catch (error) {
       console.error('Search records error:', error)
       setError(error.message || '検索中にエラーが発生しました')
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [user?.id, searchFilters])
+
+  // 初期表示時に自動的に検索を実行
+  useEffect(() => {
+    // お店の種類の取得が完了したら、初期表示時に自動検索を実行（初回のみ）
+    if (!hasInitialSearchRef.current && !isLoadingShopTypes) {
+      // お店の種類がある場合は全てチェック済みになったら検索
+      // お店の種類が0件の場合も検索を実行（全ての記録を取得）
+      if (shopTypes.length === 0 || (shopTypes.length > 0 && searchFilters.shopTypeIds.length === shopTypes.length)) {
+        hasInitialSearchRef.current = true
+        handleSearch()
+      }
+    }
+  }, [shopTypes.length, searchFilters.shopTypeIds.length, isLoadingShopTypes, handleSearch])
 
   // 公開済みのレビューの公開URLを取得
   useEffect(() => {
@@ -453,6 +470,37 @@ function ReviewSearch({ user, onShopClick, onGirlClick }) {
     })
   }
 
+  // フリーワード検索でフィルタリング
+  const filterRecordsByFreeWord = useCallback((recordsToFilter, searchWord) => {
+    if (!searchWord || searchWord.trim() === '') {
+      setRecords(recordsToFilter)
+      return
+    }
+
+    const searchLower = searchWord.toLowerCase().trim()
+    const filtered = recordsToFilter.filter(record => {
+      // 店の名前で検索
+      const shopName = (record.shop?.shop_name || record.shop_name || '').toLowerCase()
+      // ヒメの名前で検索
+      const girlName = (record.girl_name || record.girl?.girl_name || '').toLowerCase()
+      // 感想で検索
+      const review = (record.review || '').toLowerCase()
+
+      return shopName.includes(searchLower) || 
+             girlName.includes(searchLower) || 
+             review.includes(searchLower)
+    })
+
+    setRecords(filtered)
+  }, [])
+
+  // フリーワード検索が変更されたときにフィルタリングを実行
+  useEffect(() => {
+    if (allRecords.length > 0) {
+      filterRecordsByFreeWord(allRecords, freeWordSearch)
+    }
+  }, [freeWordSearch, allRecords, filterRecordsByFreeWord])
+
   // カードの展開/折りたたみ
   const toggleCard = (recordId) => {
     setExpandedCards(prev => {
@@ -580,23 +628,34 @@ function ReviewSearch({ user, onShopClick, onGirlClick }) {
       )}
 
       {/* 検索結果 */}
-      {!isLoading && records.length > 0 && (
+      {!isLoading && allRecords.length > 0 && (
         <div className="search-results">
           <h3 className="search-results-title">思い出 ({records.length}件)</h3>
-          <div className="logs-grid">
-            {records.map((record) => {
-              const isExpanded = expandedCards.has(record.id)
-              const reviewPreview = record.review ? getPreviewText(record.review, 2) : {
-                text: '',
-                hasMore: false,
-                fullText: ''
-              }
-              return (
-                <div 
-                  key={record.id} 
-                  className="log-card"
-                  onClick={() => toggleCard(record.id)}
-                >
+          <div className="search-form-group" style={{ marginTop: '16px', marginBottom: '24px' }}>
+            <label className="search-form-label">フリーワード検索</label>
+            <input
+              type="text"
+              value={freeWordSearch}
+              onChange={(e) => setFreeWordSearch(e.target.value)}
+              placeholder="店名・ヒメ名・感想で検索"
+              className="free-word-search-input"
+            />
+          </div>
+          {records.length > 0 && (
+            <div className="logs-grid">
+              {records.map((record) => {
+                const isExpanded = expandedCards.has(record.id)
+                const reviewPreview = record.review ? getPreviewText(record.review, 2) : {
+                  text: '',
+                  hasMore: false,
+                  fullText: ''
+                }
+                return (
+                  <div 
+                    key={record.id} 
+                    className="log-card"
+                    onClick={() => toggleCard(record.id)}
+                  >
                   <div className="log-card-header" style={{ position: 'relative' }}>
                     {record.public_token && (
                       <div style={{
@@ -929,9 +988,10 @@ function ReviewSearch({ user, onShopClick, onGirlClick }) {
                     </div>
                   </div>
                 </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 

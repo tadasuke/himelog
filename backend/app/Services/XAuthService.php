@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Cache;
 
 /**
  * X(Twitter)認証サービス
+ * OAuth 1.0aを使用
  */
 class XAuthService implements AuthServiceInterface
 {
@@ -20,29 +21,62 @@ class XAuthService implements AuthServiceInterface
 
     /**
      * トークンを検証し、ユーザー情報を取得
+     * OAuth 1.0aのアクセストークンとトークンシークレットを受け取る
+     * 形式: JSON文字列 {"access_token": "...", "access_token_secret": "..."}
      *
-     * @param string $token X OAuth 2.0アクセストークン
+     * @param string $tokenJson X OAuth 1.0aアクセストークンとトークンシークレットのJSON文字列
      * @return array|null ユーザー情報 または null
      */
-    public function verifyToken(string $token): ?array
+    public function verifyToken(string $tokenJson): ?array
     {
         try {
+            // JSON文字列をパース
+            $tokenData = json_decode($tokenJson, true);
+            if (!$tokenData || !isset($tokenData['access_token']) || !isset($tokenData['access_token_secret'])) {
+                Log::warning('X auth: Invalid token format', ['token_json_length' => strlen($tokenJson)]);
+                return null;
+            }
+            
+            $accessToken = $tokenData['access_token'];
+            $accessTokenSecret = $tokenData['access_token_secret'];
+            
             Log::info('X auth: Starting token verification', [
-                'token_length' => strlen($token),
-                'token_prefix' => substr($token, 0, 20) . '...'
+                'access_token_length' => strlen($accessToken),
+                'access_token_prefix' => substr($accessToken, 0, 20) . '...'
             ]);
 
             // 0. トークンからユーザーIDへのマッピングをキャッシュから確認
-            $tokenCacheKey = 'x_token_to_user_id:' . hash('sha256', $token);
+            $tokenCacheKey = 'x_token_to_user_id:' . hash('sha256', $accessToken . $accessTokenSecret);
             $cachedProviderUserId = Cache::get($tokenCacheKey);
             
-            // 1. X API v2を使用してユーザー情報を取得
+            // 1. X API 1.1のaccount/verify_credentialsエンドポイントを使用
+            $consumerKey = config('services.x.client_id');
+            $consumerSecret = config('services.x.client_secret');
+            
+            if (!$consumerKey || !$consumerSecret) {
+                Log::error('X auth: X credentials not configured');
+                return null;
+            }
+            
+            $url = 'https://api.x.com/1.1/account/verify_credentials.json';
+            
+            // OAuth 1.0aパラメータを生成
+            $oauthParams = OAuth1Helper::generateOAuthParams($consumerKey, $accessToken);
+            $oauthParams['oauth_signature'] = OAuth1Helper::generateSignature(
+                'GET',
+                $url,
+                $oauthParams,
+                $consumerSecret,
+                $accessTokenSecret
+            );
+            
+            // Authorizationヘッダーを生成
+            $authHeader = OAuth1Helper::buildAuthorizationHeader($oauthParams);
+            
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $token,
+                'Authorization' => $authHeader,
                 'Content-Type' => 'application/json',
-            ])->get('https://api.x.com/2/users/me', [
-                'user.fields' => 'id,name,username,profile_image_url'
-            ]);
+            ])->get($url);
 
             Log::info('X auth: API response received', [
                 'status' => $response->status(),
@@ -66,16 +100,10 @@ class XAuthService implements AuthServiceInterface
                 // レート制限エラー（429）の場合
                 if ($response->status() === 429) {
                     $rateLimitReset = $response->header('x-rate-limit-reset');
-                    $userLimit24HourReset = $response->header('x-user-limit-24hour-reset');
-                    $userLimit24HourRemaining = $response->header('x-user-limit-24hour-remaining');
-                    $userLimit24HourLimit = $response->header('x-user-limit-24hour-limit');
                     
                     Log::error('X auth: Rate limit exceeded', [
-                        'token_prefix' => substr($token, 0, 20) . '...',
+                        'access_token_prefix' => substr($accessToken, 0, 20) . '...',
                         'rate_limit_reset' => $rateLimitReset ?? 'unknown',
-                        'user_limit_24hour_remaining' => $userLimit24HourRemaining ?? 'unknown',
-                        'user_limit_24hour_limit' => $userLimit24HourLimit ?? 'unknown',
-                        'user_limit_24hour_reset' => $userLimit24HourReset ?? 'unknown',
                         'body' => $errorBody,
                         'json' => $errorJson
                     ]);
@@ -118,22 +146,17 @@ class XAuthService implements AuthServiceInterface
                         }
                     } else {
                         Log::warning('X auth: No cached user ID found, cannot retrieve user from database (rate limit)', [
-                            'token_prefix' => substr($token, 0, 20) . '...'
+                            'access_token_prefix' => substr($accessToken, 0, 20) . '...'
                         ]);
                     }
                     
-                    // 24時間制限に達している場合のメッセージを生成
-                    $message = 'X APIのレート制限に達しました。';
-                    if ($userLimit24HourRemaining === '0' && $userLimit24HourReset) {
-                        $resetTime = (int)$userLimit24HourReset;
-                        $resetDate = date('Y-m-d H:i:s', $resetTime);
-                        $message .= " 24時間制限（{$userLimit24HourLimit}リクエスト/24時間）に達しています。リセット時刻: {$resetDate}";
-                    } else {
-                        $message .= ' しばらく待ってから再度お試しください。';
-                    }
-                    
                     // レート制限エラーの場合は例外を投げる
-                    // 新規ユーザーの場合、キャッシュにユーザーIDが存在しないため、データベースからユーザー情報を取得できない
+                    $message = 'X APIのレート制限に達しました。しばらく待ってから再度お試しください。';
+                    if ($rateLimitReset) {
+                        $resetTime = (int)$rateLimitReset;
+                        $resetDate = date('Y-m-d H:i:s', $resetTime);
+                        $message .= " リセット時刻: {$resetDate}";
+                    }
                     throw new \Exception($message);
                 } else {
                     Log::error('X auth: API request failed', [
@@ -146,21 +169,20 @@ class XAuthService implements AuthServiceInterface
                 return null;
             }
 
-            $data = $response->json();
+            $userData = $response->json();
             
-            if (!isset($data['data'])) {
-                Log::warning('X auth: Invalid response format', ['response' => $data]);
+            // API 1.1のverify_credentialsは直接ユーザーデータを返す
+            if (!is_array($userData) || !isset($userData['id_str'])) {
+                Log::warning('X auth: Invalid response format', ['response' => $userData]);
                 return null;
             }
-
-            $userData = $data['data'];
             
             // ユーザー情報を取得
-            $providerUserId = $userData['id'] ?? null;
+            $providerUserId = $userData['id_str'] ?? null;
             $userName = $userData['name'] ?? null;
-            $userUsername = $userData['username'] ?? null;
-            $userEmail = null; // emailは認証済みアプリでのみ取得可能
-            $userPicture = $userData['profile_image_url'] ?? null;
+            $userUsername = $userData['screen_name'] ?? null;
+            $userEmail = $userData['email'] ?? null; // 認証済みアプリでのみ取得可能
+            $userPicture = $userData['profile_image_url_https'] ?? null;
 
             if (!$providerUserId) {
                 Log::warning('X auth: User ID not found', ['data' => $userData]);

@@ -69,17 +69,37 @@
     <script>
         // 設定の取得
         function getConfig() {
-            // window.API_BASE_URLは必ず設定されている
-            const apiBaseUrl = window.API_BASE_URL;
+            // APIベースURLを取得（現在のホストから推測）
+            let apiBaseUrl = '';
+            const hostname = window.location.hostname;
+            const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
             
-            // デバッグ: window.API_BASE_URLの値をログ出力
-            console.log('getConfig - window.API_BASE_URL:', apiBaseUrl);
-            console.log('getConfig - window.API_BASE_URL type:', typeof apiBaseUrl);
-            console.log('getConfig - window.API_BASE_URL length:', apiBaseUrl?.length);
-            
-            if (!apiBaseUrl) {
-                console.error('⚠️ window.API_BASE_URL is not set!');
+            // ローカル環境の場合は、Viteのプロキシ経由でアクセス（相対パス）
+            // これにより、バックエンドのポートが8000以外でも動作する
+            if (isLocalhost) {
+                // Viteのプロキシ経由でアクセス（相対パス）
+                // vite.config.jsで/api/*はhttp://localhost:8000にプロキシされる
+                apiBaseUrl = '';
+            } else if (window.API_BASE_URL) {
+                // 本番環境では、window.API_BASE_URLが設定されている場合はそれを使用
+                apiBaseUrl = window.API_BASE_URL;
+            } else {
+                // フォールバック: app.hime-log.jp → api.hime-log.jp に変換
+                apiBaseUrl = window.location.origin.replace(/^https?:\/\/(app\.)?/, (match, app) => {
+                    if (app) {
+                        return window.location.protocol + '//' + window.location.hostname.replace('app.', 'api.');
+                    }
+                    return window.location.origin;
+                });
             }
+            
+            // デバッグ情報を出力
+            console.log('getConfig:', {
+                hostname: hostname,
+                isLocalhost: isLocalhost,
+                apiBaseUrl: apiBaseUrl,
+                window_API_BASE_URL: window.API_BASE_URL
+            });
             
             // ReactアプリのURLを取得（同じドメインなので相対パスを使用）
             const reactAppUrl = window.REACT_APP_URL || '/';
@@ -133,11 +153,11 @@
             loginWithToken(credential, 'google');
         }
 
-        // X認証のコールバック処理
+        // X認証のコールバック処理（OAuth 1.0a）
         async function handleXCallback() {
             const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
-            const state = urlParams.get('state');
+            const oauthToken = urlParams.get('oauth_token');
+            const oauthVerifier = urlParams.get('oauth_verifier');
             const error = urlParams.get('error');
             
             // URLパラメータをクリア
@@ -148,25 +168,23 @@
                 return;
             }
             
-            if (!code || !state) {
-                showError('認証コードが取得できませんでした');
+            if (!oauthToken || !oauthVerifier) {
+                showError('認証情報が取得できませんでした');
                 return;
             }
             
-            // セッションストレージから保存された情報を取得
-            const savedState = sessionStorage.getItem('x_auth_state');
-            const codeVerifier = sessionStorage.getItem('x_code_verifier');
+            // セッションストレージから保存されたoauth_token_secretを取得
+            const oauthTokenSecret = sessionStorage.getItem('x_oauth_token_secret');
             
-            if (!savedState || savedState !== state || !codeVerifier) {
+            if (!oauthTokenSecret) {
                 showError('認証情報が無効です');
                 return;
             }
             
             updateMessage('X認証を完了しています...');
             
-            // バックエンドで認証コードをトークンに交換
+            // バックエンドでアクセストークンを取得
             const config = getConfig();
-            const redirectUri = window.location.origin + '/login/callback.html';
             
             try {
                 const response = await fetch(`${config.apiBaseUrl}/api/auth/x/callback`, {
@@ -175,9 +193,9 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        code: code,
-                        code_verifier: codeVerifier,
-                        redirect_uri: redirectUri,
+                        oauth_token: oauthToken,
+                        oauth_verifier: oauthVerifier,
+                        oauth_token_secret: oauthTokenSecret,
                     }),
                 });
                 
@@ -188,29 +206,25 @@
                 
                 const data = await response.json();
                 
-                if (data.loggedIn && data.user && data.access_token) {
+                if (data.loggedIn && data.user && data.access_token && data.access_token_secret) {
+                    // アクセストークンとアクセストークンシークレットをJSON文字列として保存
+                    const tokenJson = JSON.stringify({
+                        access_token: data.access_token,
+                        access_token_secret: data.access_token_secret,
+                    });
+                    
                     // セッションストレージに保存
-                    sessionStorage.setItem('authToken', data.access_token);
+                    sessionStorage.setItem('authToken', tokenJson);
                     sessionStorage.setItem('user', JSON.stringify(data.user));
                     sessionStorage.setItem('isLoggedIn', 'true');
                     sessionStorage.setItem('authMethod', 'x');
                     
                     // クリーンアップ
-                    sessionStorage.removeItem('x_auth_state');
-                    sessionStorage.removeItem('x_code_verifier');
-                    
-                    if (data.refresh_token) {
-                        sessionStorage.setItem('refreshToken', data.refresh_token);
-                    }
-                    if (data.expires_in) {
-                        const expiry = Date.now() + (data.expires_in * 1000);
-                        sessionStorage.setItem('tokenExpiry', expiry.toString());
-                    }
+                    sessionStorage.removeItem('x_oauth_token_secret');
                     
                     updateMessage('ログイン成功！リダイレクト中...');
                     
                     // Reactアプリにリダイレクト（同じドメインなので相対パス）
-                    const config = getConfig();
                     const reactAppUrl = config.reactAppUrl || '/';
                     console.log('Redirecting to React app:', reactAppUrl);
                     setTimeout(() => {
@@ -223,8 +237,7 @@
                 console.error('X認証エラー:', error);
                 showError(error.message || 'X認証に失敗しました');
                 // クリーンアップ
-                sessionStorage.removeItem('x_auth_state');
-                sessionStorage.removeItem('x_code_verifier');
+                sessionStorage.removeItem('x_oauth_token_secret');
             }
         }
 
@@ -289,14 +302,20 @@
         document.addEventListener('DOMContentLoaded', () => {
             // URLパラメータを確認して、Google認証かX認証かを判定
             const urlParams = new URLSearchParams(window.location.search);
+            const oauthToken = urlParams.get('oauth_token');
+            const oauthVerifier = urlParams.get('oauth_verifier');
             const code = urlParams.get('code');
             const state = urlParams.get('state');
             const hash = window.location.hash;
             
-            // X認証の場合は、codeとstateがある
-            if (code && state) {
+            // X認証の場合は、oauth_tokenとoauth_verifierがある（OAuth 1.0a）
+            if (oauthToken && oauthVerifier) {
                 handleXCallback();
             } 
+            // または、codeとstateがある（OAuth 2.0 - 互換性のため残す）
+            else if (code && state) {
+                handleXCallback();
+            }
             // Google認証の場合は、hashにid_tokenがあるか、URLパラメータで返ってくる
             else if (hash || window.location.search.includes('id_token')) {
                 handleGoogleCallback();
